@@ -346,21 +346,88 @@ function setupEventListeners() {
 
   backBtn.addEventListener('click', () => { endSession(); stopEmulator(); showLibrary() })
 
-  saveStateBtn.addEventListener('click', () => {
-    if (window.EJS_emulator) {
+  // Save button - saves to Supabase cloud if logged in, otherwise local
+  saveStateBtn.addEventListener('click', async () => {
+    if (!window.EJS_emulator || !currentGame) {
+      showToast('No game running', 'error')
+      return
+    }
+
+    const { user } = store.getState()
+
+    if (user) {
+      // Save to Supabase cloud
+      try {
+        showLoading('Saving to cloud...')
+        const saveData = window.EJS_emulator.gameManager.getSaveFile()
+        if (saveData) {
+          const blob = new Blob([saveData], { type: 'application/octet-stream' })
+          await saves.save(user.id, currentGame.gameId, blob)
+          showToast('Saved to cloud!', 'success')
+        } else {
+          // Fall back to local save
+          window.EJS_emulator.gameManager.saveSaveFiles()
+          showToast('State saved locally', 'success')
+        }
+      } catch (error) {
+        console.error('Cloud save error:', error)
+        // Fall back to local save on error
+        window.EJS_emulator.gameManager.saveSaveFiles()
+        showToast('Saved locally (cloud unavailable)', 'warning')
+      } finally {
+        hideLoading()
+      }
+    } else {
+      // Save locally when not logged in
       window.EJS_emulator.gameManager.saveSaveFiles()
-      showToast('State saved!', 'success')
+      showToast('State saved locally', 'success')
     }
   })
 
-  loadStateBtn.addEventListener('click', () => {
-    if (window.EJS_emulator) {
+  // Load button - loads from Supabase cloud if logged in and save exists, otherwise local
+  loadStateBtn.addEventListener('click', async () => {
+    if (!window.EJS_emulator || !currentGame) {
+      showToast('No game running', 'error')
+      return
+    }
+
+    const { user } = store.getState()
+
+    if (user) {
+      // Try to load from Supabase cloud
+      try {
+        showLoading('Loading from cloud...')
+        const saveBlob = await saves.load(user.id, currentGame.gameId)
+        if (saveBlob) {
+          const arrayBuffer = await saveBlob.arrayBuffer()
+          const saveData = new Uint8Array(arrayBuffer)
+          window.EJS_emulator.gameManager.loadSaveFiles()
+          // Load the cloud save data into the emulator
+          if (window.EJS_emulator.gameManager.saveSaveFiles) {
+            window.EJS_emulator.gameManager.loadState(saveData)
+          }
+          showToast('Loaded from cloud!', 'success')
+        } else {
+          // No cloud save, try local
+          window.EJS_emulator.gameManager.loadSaveFiles()
+          showToast('Loaded local save (no cloud save found)', 'info')
+        }
+      } catch (error) {
+        console.error('Cloud load error:', error)
+        // Fall back to local load on error
+        window.EJS_emulator.gameManager.loadSaveFiles()
+        showToast('Loaded locally (cloud unavailable)', 'warning')
+      } finally {
+        hideLoading()
+      }
+    } else {
+      // Load locally when not logged in
       window.EJS_emulator.gameManager.loadSaveFiles()
-      showToast('State loaded!', 'success')
+      showToast('State loaded', 'success')
     }
   })
 
-  // Cloud save button
+  // Cloud button - shows save/load options menu
   if (cloudSaveBtn) {
     cloudSaveBtn.addEventListener('click', async () => {
       const { user } = store.getState()
@@ -373,22 +440,10 @@ function setupEventListeners() {
         showToast('No game running', 'error')
         return
       }
-      try {
-        showLoading('Saving to cloud...')
-        const saveData = window.EJS_emulator.gameManager.getSaveFile()
-        if (saveData) {
-          const blob = new Blob([saveData], { type: 'application/octet-stream' })
-          await saves.save(user.id, currentGame.gameId, blob)
-          showToast('Saved to cloud!', 'success')
-        } else {
-          showToast('No save data available', 'error')
-        }
-      } catch (error) {
-        console.error('Cloud save error:', error)
-        showToast('Failed to save to cloud', 'error')
-      } finally {
-        hideLoading()
-      }
+
+      // Show cloud save options
+      const hasCloudSave = await checkCloudSaveExists(user.id, currentGame.gameId)
+      showCloudSaveMenu(hasCloudSave)
     })
   }
 
@@ -919,6 +974,103 @@ function showLoading(text = 'Loading...') {
 }
 
 function hideLoading() { document.querySelector('.loading-overlay')?.remove() }
+
+// Check if cloud save exists for a game
+async function checkCloudSaveExists(userId, gameId) {
+  try {
+    const saveRecord = await saves.get(userId, gameId)
+    return !!saveRecord
+  } catch {
+    return false
+  }
+}
+
+// Show cloud save menu with options
+function showCloudSaveMenu(hasCloudSave) {
+  const existing = document.querySelector('.cloud-save-menu')
+  if (existing) existing.remove()
+
+  const menu = document.createElement('div')
+  menu.className = 'cloud-save-menu'
+  menu.innerHTML = `
+    <div class="cloud-save-menu-overlay"></div>
+    <div class="cloud-save-menu-content">
+      <h3>Cloud Save Options</h3>
+      <div class="cloud-save-options">
+        <button class="cloud-option-btn" id="cloud-upload-btn">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+          <span>Upload to Cloud</span>
+          <small>Save current state to cloud</small>
+        </button>
+        <button class="cloud-option-btn ${!hasCloudSave ? 'disabled' : ''}" id="cloud-download-btn" ${!hasCloudSave ? 'disabled' : ''}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          <span>Download from Cloud</span>
+          <small>${hasCloudSave ? 'Load your cloud save' : 'No cloud save found'}</small>
+        </button>
+      </div>
+      <button class="cloud-cancel-btn" id="cloud-cancel-btn">Cancel</button>
+    </div>
+  `
+  document.body.appendChild(menu)
+
+  // Event handlers
+  menu.querySelector('.cloud-save-menu-overlay').addEventListener('click', () => menu.remove())
+  menu.querySelector('#cloud-cancel-btn').addEventListener('click', () => menu.remove())
+
+  menu.querySelector('#cloud-upload-btn').addEventListener('click', async () => {
+    menu.remove()
+    const { user } = store.getState()
+    try {
+      showLoading('Uploading to cloud...')
+      const saveData = window.EJS_emulator.gameManager.getSaveFile()
+      if (saveData) {
+        const blob = new Blob([saveData], { type: 'application/octet-stream' })
+        await saves.save(user.id, currentGame.gameId, blob)
+        showToast('Uploaded to cloud!', 'success')
+      } else {
+        showToast('No save data to upload', 'error')
+      }
+    } catch (error) {
+      console.error('Cloud upload error:', error)
+      showToast('Upload failed', 'error')
+    } finally {
+      hideLoading()
+    }
+  })
+
+  if (hasCloudSave) {
+    menu.querySelector('#cloud-download-btn').addEventListener('click', async () => {
+      menu.remove()
+      const { user } = store.getState()
+      try {
+        showLoading('Downloading from cloud...')
+        const saveBlob = await saves.load(user.id, currentGame.gameId)
+        if (saveBlob) {
+          const arrayBuffer = await saveBlob.arrayBuffer()
+          const saveData = new Uint8Array(arrayBuffer)
+          // Load save data into emulator
+          if (window.EJS_emulator.gameManager.loadState) {
+            window.EJS_emulator.gameManager.loadState(saveData)
+          }
+          showToast('Downloaded from cloud!', 'success')
+        }
+      } catch (error) {
+        console.error('Cloud download error:', error)
+        showToast('Download failed', 'error')
+      } finally {
+        hideLoading()
+      }
+    })
+  }
+}
 
 function showToast(message, type = 'info') {
   document.querySelector('.toast')?.remove()
