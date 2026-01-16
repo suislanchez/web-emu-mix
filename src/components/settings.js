@@ -59,7 +59,17 @@ export function renderSettingsModal() {
             </div>
 
             <div class="setting-group">
-              <label class="setting-label">XMB Navigation Mode</label>
+              <label class="setting-label">Navigation Mode</label>
+              <div class="setting-row">
+                <div class="setting-info">
+                  <span>webЯcade Mode</span>
+                  <span class="setting-hint">TV-style interface with hero section and horizontal carousels</span>
+                </div>
+                <label class="toggle">
+                  <input type="checkbox" id="setting-webrcade-mode" ${currentSettings.webrcadeMode ? 'checked' : ''}>
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
               <div class="setting-row">
                 <div class="setting-info">
                   <span>PS3 XMB Mode</span>
@@ -347,11 +357,35 @@ function setupSettingsEvents() {
   setupToggle('setting-autosave', 'autoSave')
   setupToggle('setting-audio', 'audioEnabled')
 
-  // XMB Mode toggle with special handling
+  // webЯcade Mode toggle with special handling
+  const webrcadeToggle = document.getElementById('setting-webrcade-mode')
   const xmbToggle = document.getElementById('setting-xmb-mode')
+
+  if (webrcadeToggle) {
+    webrcadeToggle.addEventListener('change', (e) => {
+      currentSettings.webrcadeMode = e.target.checked
+      // Disable XMB mode if enabling webrcade
+      if (e.target.checked && xmbToggle) {
+        currentSettings.xmbMode = false
+        xmbToggle.checked = false
+      }
+      saveSettings(currentSettings)
+      window.dispatchEvent(new CustomEvent('webrcade-mode-changed', { detail: { enabled: e.target.checked } }))
+      if (e.target.checked) {
+        closeSettingsModal()
+      }
+    })
+  }
+
+  // XMB Mode toggle with special handling
   if (xmbToggle) {
     xmbToggle.addEventListener('change', (e) => {
       currentSettings.xmbMode = e.target.checked
+      // Disable webrcade mode if enabling XMB
+      if (e.target.checked && webrcadeToggle) {
+        currentSettings.webrcadeMode = false
+        webrcadeToggle.checked = false
+      }
       saveSettings(currentSettings)
       // Dispatch event for main.js to handle XMB activation
       window.dispatchEvent(new CustomEvent('xmb-mode-changed', { detail: { enabled: e.target.checked } }))

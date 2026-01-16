@@ -2,6 +2,7 @@ import './style.css'
 import './cheats.css'
 import './welcome.css'
 import './xmb.css'
+import './webrcade.css'
 import { auth, saves, sessions, achievements } from './lib/supabase.js'
 import { store, loadRecentGames as loadStoredGames, updateRecentGames } from './lib/store.js'
 import { loadUserData, updateHeaderUI, renderAuthModal } from './components/auth.js'
@@ -26,6 +27,7 @@ import { renderCollectionsModal } from './components/collectionsModal.js'
 import { renderLeaderboardsModal } from './components/leaderboardsModal.js'
 import { renderGameBrowser, closeBrowser as closeGameBrowser } from './components/gameBrowser.js'
 import { renderLibraryManager, closeLibraryManager } from './components/libraryManager.js'
+import { renderWebrcadeView, cleanupWebrcadeView } from './components/webrcadeView.js'
 import { handleOAuthCallbackPage } from './components/storageSettings.js'
 import {
   applyShader, SHADERS,
@@ -194,11 +196,63 @@ async function init() {
     console.log('Auth listener not available')
   }
 
-  // Check if XMB mode is enabled on startup
+  // Check view mode on startup
   const settings = loadSettings()
   if (settings.xmbMode) {
     renderXMB(handleXMBGameSelect)
+  } else if (settings.webrcadeMode) {
+    renderWebrcadeMode()
   }
+}
+
+// Render webrcade view mode
+function renderWebrcadeMode() {
+  // Hide default library view content, show webrcade
+  const discoveryHero = document.getElementById('discovery-hero')
+  const systemSelector = document.querySelector('.system-selector')
+  const uploadSection = document.querySelector('.upload-section')
+  const recentSection = document.getElementById('recent-games-section')
+
+  if (discoveryHero) discoveryHero.style.display = 'none'
+  if (systemSelector) systemSelector.style.display = 'none'
+  if (uploadSection) uploadSection.style.display = 'none'
+  if (recentSection) recentSection.style.display = 'none'
+
+  // Create or get webrcade container
+  let webrcadeContainer = document.getElementById('webrcade-view')
+  if (!webrcadeContainer) {
+    webrcadeContainer = document.createElement('div')
+    webrcadeContainer.id = 'webrcade-view'
+    libraryView.appendChild(webrcadeContainer)
+  }
+  webrcadeContainer.style.display = 'block'
+
+  renderWebrcadeView(webrcadeContainer, playGameFromWebrcade)
+}
+
+// Play game callback for webrcade view
+async function playGameFromWebrcade(game) {
+  const index = recentGames.findIndex(g => g.gameId === game.gameId)
+  if (index !== -1) {
+    await playRecentGame(index)
+  }
+}
+
+// Exit webrcade mode
+function exitWebrcadeMode() {
+  cleanupWebrcadeView()
+  const webrcadeContainer = document.getElementById('webrcade-view')
+  if (webrcadeContainer) webrcadeContainer.style.display = 'none'
+
+  const discoveryHero = document.getElementById('discovery-hero')
+  const systemSelector = document.querySelector('.system-selector')
+  const uploadSection = document.querySelector('.upload-section')
+
+  if (discoveryHero) discoveryHero.style.display = ''
+  if (systemSelector) systemSelector.style.display = ''
+  if (uploadSection) uploadSection.style.display = ''
+
+  renderRecentGames()
 }
 
 // Handle image load errors with fallback chain
@@ -439,9 +493,20 @@ function setupEventListeners() {
   // XMB Mode event listeners
   window.addEventListener('xmb-mode-changed', (e) => {
     if (e.detail.enabled) {
+      exitWebrcadeMode() // Exit webrcade if active
       renderXMB(handleXMBGameSelect)
     } else {
       closeXMB()
+    }
+  })
+
+  // webЯcade Mode event listeners
+  window.addEventListener('webrcade-mode-changed', (e) => {
+    if (e.detail.enabled) {
+      closeXMB() // Close XMB if active
+      renderWebrcadeMode()
+    } else {
+      exitWebrcadeMode()
     }
   })
 

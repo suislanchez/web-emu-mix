@@ -1,0 +1,522 @@
+/* webЯcade-style Interface */
+/* Netflix/TV-style UI with hero section and horizontal carousels */
+
+/* Hide default header elements in webrcade mode */
+body:has(#webrcade-view:not([style*="display: none"])) .header {
+  background: transparent;
+  border-bottom: none;
+  position: absolute;
+  z-index: 100;
+}
+
+body:has(#webrcade-view:not([style*="display: none"])) .header-nav,
+body:has(#webrcade-view:not([style*="display: none"])) .hamburger-btn,
+body:has(#webrcade-view:not([style*="display: none"])) .sprite-scene {
+  display: none;
+}
+
+body:has(#webrcade-view:not([style*="display: none"])) .header-left {
+  width: 100%;
+  justify-content: center;
+}
+
+body:has(#webrcade-view:not([style*="display: none"])) .footer {
+  display: none;
+}
+
+.webrcade-container {
+  min-height: 100vh;
+  background: #1a1a1a;
+  color: #fff;
+  overflow-x: hidden;
+  padding-top: 60px; /* Account for header */
+}
+
+/* ============================================
+   HERO SECTION
+   ============================================ */
+
+.webrcade-hero {
+  position: relative;
+  height: 60vh;
+  min-height: 400px;
+  max-height: 600px;
+  display: flex;
+  align-items: center;
+  padding: 0 5%;
+  overflow: hidden;
+}
+
+.webrcade-hero-empty {
+  background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+  justify-content: center;
+}
+
+.webrcade-hero-empty .hero-content {
+  text-align: center;
+  max-width: 600px;
+}
+
+.webrcade-hero-empty .hero-title {
+  font-size: 3rem;
+  margin-bottom: 0.5rem;
+}
+
+.webrcade-hero-empty .hero-description {
+  font-size: 1.1rem;
+  opacity: 0.8;
+  margin-bottom: 2rem;
+}
+
+.hero-backdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 0;
+}
+
+.hero-backdrop-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: blur(20px) brightness(0.4);
+  transform: scale(1.1);
+}
+
+.hero-backdrop-gradient {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    to right,
+    rgba(26, 26, 26, 1) 0%,
+    rgba(26, 26, 26, 0.9) 30%,
+    rgba(26, 26, 26, 0.5) 60%,
+    rgba(26, 26, 26, 0.3) 100%
+  ),
+  linear-gradient(
+    to top,
+    rgba(26, 26, 26, 1) 0%,
+    rgba(26, 26, 26, 0) 50%
+  );
+}
+
+.hero-backdrop-empty {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(ellipse at center, rgba(100, 100, 100, 0.1) 0%, transparent 70%);
+}
+
+.hero-content {
+  position: relative;
+  z-index: 1;
+  max-width: 45%;
+  padding-right: 2rem;
+}
+
+.hero-title {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 2rem;
+  margin: 0 0 0.5rem 0;
+  line-height: 1.3;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+.hero-system {
+  font-size: 1rem;
+  color: var(--system-color, #e94560);
+  margin: 0 0 1rem 0;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.hero-description {
+  font-family: 'VT323', monospace;
+  font-size: 1.25rem;
+  line-height: 1.6;
+  margin: 0 0 1.5rem 0;
+  opacity: 0.9;
+  max-width: 500px;
+}
+
+.hero-actions {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.hero-play-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.875rem 2rem;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.875rem;
+  background: #fff;
+  color: #1a1a1a;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: bold;
+}
+
+.hero-play-btn:hover {
+  transform: scale(1.05);
+  background: #f0f0f0;
+}
+
+.hero-play-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+.hero-secondary-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1.25rem;
+  font-family: 'VT323', monospace;
+  font-size: 1.1rem;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.hero-secondary-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.hero-favorite-btn.active {
+  color: #e94560;
+  border-color: #e94560;
+}
+
+.hero-screenshot {
+  position: absolute;
+  right: 5%;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 40%;
+  max-width: 500px;
+  aspect-ratio: 4/3;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  z-index: 1;
+}
+
+.hero-screenshot img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.hero-screenshot.no-image {
+  background: linear-gradient(135deg, var(--system-color, #333) 0%, #1a1a1a 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hero-screenshot.no-image::after {
+  content: '';
+  width: 80px;
+  height: 80px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.3)' stroke-width='1.5'%3E%3Crect x='2' y='6' width='20' height='12' rx='2'/%3E%3Ccircle cx='8' cy='12' r='2'/%3E%3Ccircle cx='17' cy='10' r='1'/%3E%3Ccircle cx='17' cy='14' r='1'/%3E%3C/svg%3E") center/contain no-repeat;
+}
+
+/* ============================================
+   CATEGORIES & CAROUSELS
+   ============================================ */
+
+.webrcade-categories {
+  padding: 2rem 0 4rem;
+}
+
+.webrcade-category {
+  margin-bottom: 2rem;
+}
+
+.category-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0 5%;
+  margin-bottom: 1rem;
+  cursor: pointer;
+}
+
+.category-header:hover .category-title {
+  color: #fff;
+}
+
+.category-header:hover .category-arrow {
+  transform: translateX(4px);
+}
+
+.category-title {
+  font-family: 'VT323', monospace;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  margin: 0;
+  transition: color 0.2s;
+}
+
+.category-arrow {
+  color: rgba(255, 255, 255, 0.6);
+  transition: transform 0.2s;
+  display: flex;
+  align-items: center;
+}
+
+.category-carousel-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.category-carousel {
+  display: flex;
+  gap: 1rem;
+  padding: 0.5rem 5%;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.category-carousel::-webkit-scrollbar {
+  display: none;
+}
+
+.carousel-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 50px;
+  height: 100%;
+  background: linear-gradient(to right, rgba(26, 26, 26, 0.9), transparent);
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.category-carousel-wrapper:hover .carousel-nav {
+  opacity: 1;
+}
+
+.carousel-nav:hover {
+  color: var(--system-color, #e94560);
+}
+
+.carousel-nav-left {
+  left: 0;
+  background: linear-gradient(to right, rgba(26, 26, 26, 0.95), transparent);
+}
+
+.carousel-nav-right {
+  right: 0;
+  background: linear-gradient(to left, rgba(26, 26, 26, 0.95), transparent);
+}
+
+/* ============================================
+   GAME CARDS
+   ============================================ */
+
+.webrcade-game-card {
+  flex-shrink: 0;
+  width: 160px;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.webrcade-game-card:hover {
+  transform: scale(1.05);
+}
+
+.webrcade-game-card.selected {
+  transform: scale(1.08);
+}
+
+.webrcade-game-card.selected .game-card-cover {
+  border-color: #e60012;
+  box-shadow: 0 0 0 3px #e60012, 0 10px 30px rgba(230, 0, 18, 0.3);
+}
+
+.game-card-cover {
+  width: 100%;
+  aspect-ratio: 1/1;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #2a2a2a;
+  border: 3px solid transparent;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.game-card-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.game-card-cover.no-cover {
+  background: linear-gradient(135deg, var(--system-color, #333) 20%, #1a1a1a 100%);
+}
+
+.game-card-placeholder {
+  color: rgba(255, 255, 255, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.game-card-title {
+  font-family: 'VT323', monospace;
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.9);
+  text-align: center;
+  margin-top: 0.5rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 0 0.25rem;
+}
+
+/* ============================================
+   EMPTY STATE
+   ============================================ */
+
+.webrcade-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.webrcade-empty .empty-icon {
+  margin-bottom: 1.5rem;
+  opacity: 0.4;
+}
+
+.webrcade-empty h3 {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 1.25rem;
+  margin: 0 0 0.75rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.webrcade-empty p {
+  font-family: 'VT323', monospace;
+  font-size: 1.25rem;
+  margin: 0;
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+
+@media (max-width: 1024px) {
+  .hero-content {
+    max-width: 55%;
+  }
+
+  .hero-screenshot {
+    width: 35%;
+  }
+
+  .hero-title {
+    font-size: 1.5rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .webrcade-hero {
+    height: auto;
+    min-height: auto;
+    flex-direction: column;
+    padding: 2rem 5%;
+    text-align: center;
+  }
+
+  .hero-content {
+    max-width: 100%;
+    padding-right: 0;
+    order: 2;
+  }
+
+  .hero-screenshot {
+    position: relative;
+    right: auto;
+    top: auto;
+    transform: none;
+    width: 80%;
+    max-width: 300px;
+    margin-bottom: 1.5rem;
+    order: 1;
+  }
+
+  .hero-title {
+    font-size: 1.25rem;
+  }
+
+  .hero-description {
+    font-size: 1.1rem;
+  }
+
+  .hero-actions {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .webrcade-game-card {
+    width: 120px;
+  }
+
+  .category-title {
+    font-size: 1.25rem;
+  }
+
+  .carousel-nav {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .webrcade-game-card {
+    width: 100px;
+  }
+
+  .hero-play-btn {
+    padding: 0.75rem 1.5rem;
+    font-size: 0.75rem;
+  }
+
+  .game-card-title {
+    font-size: 0.875rem;
+  }
+}
