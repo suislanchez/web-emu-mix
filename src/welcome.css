@@ -100,14 +100,190 @@
   gap: 1rem;
 }
 
-.pixel-controller {
-  animation: float 3s ease-in-out infinite;
-  filter: drop-shadow(0 0 20px rgba(233, 69, 96, 0.5));
+/* Pipe Kick Animation Scene */
+.pipe-kick-scene {
+  position: relative;
+  width: 280px;
+  height: 100px;
+  margin: 0 auto 1rem;
+  overflow: visible;
 }
 
-@keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
+.ground-line {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, #4a4a6a, transparent);
+}
+
+/* Pipes */
+.pipe {
+  position: absolute;
+  bottom: 3px;
+  width: 28px;
+  height: 50px;
+  background: linear-gradient(90deg, #2d8f2d 0%, #3cb043 30%, #2d8f2d 100%);
+  border-radius: 4px 4px 0 0;
+  box-shadow: inset -4px 0 0 rgba(0,0,0,0.2), inset 4px 0 0 rgba(255,255,255,0.1);
+}
+
+.pipe::before {
+  content: '';
+  position: absolute;
+  top: -8px;
+  left: -4px;
+  width: 36px;
+  height: 12px;
+  background: linear-gradient(90deg, #2d8f2d 0%, #3cb043 30%, #2d8f2d 100%);
+  border-radius: 3px;
+  box-shadow: inset -3px 0 0 rgba(0,0,0,0.2), inset 3px 0 0 rgba(255,255,255,0.1);
+}
+
+.pipe-1 { right: 60px; animation: pipeKick1 4s ease-in-out infinite; }
+.pipe-2 { right: 110px; animation: pipeKick2 4s ease-in-out infinite; }
+.pipe-3 { right: 160px; animation: pipeKick3 4s ease-in-out infinite; }
+
+@keyframes pipeKick1 {
+  0%, 20% { transform: translateX(0) rotate(0deg); opacity: 1; }
+  25% { transform: translateX(0) rotate(0deg); opacity: 1; }
+  35% { transform: translateX(120px) translateY(-80px) rotate(45deg); opacity: 1; }
+  45%, 100% { transform: translateX(200px) translateY(100px) rotate(90deg); opacity: 0; }
+}
+
+@keyframes pipeKick2 {
+  0%, 40% { transform: translateX(0) rotate(0deg); opacity: 1; }
+  45% { transform: translateX(0) rotate(0deg); opacity: 1; }
+  55% { transform: translateX(140px) translateY(-100px) rotate(-30deg); opacity: 1; }
+  65%, 100% { transform: translateX(220px) translateY(80px) rotate(-60deg); opacity: 0; }
+}
+
+@keyframes pipeKick3 {
+  0%, 60% { transform: translateX(0) rotate(0deg); opacity: 1; }
+  65% { transform: translateX(0) rotate(0deg); opacity: 1; }
+  75% { transform: translateX(160px) translateY(-120px) rotate(60deg); opacity: 1; }
+  85%, 100% { transform: translateX(250px) translateY(60px) rotate(120deg); opacity: 0; }
+}
+
+/* Pixel Character */
+.pixel-character {
+  position: absolute;
+  bottom: 3px;
+  left: 20px;
+  width: 32px;
+  height: 48px;
+  animation: characterWalk 4s linear infinite;
+}
+
+.char-head {
+  position: absolute;
+  top: 0;
+  left: 4px;
+  width: 24px;
+  height: 20px;
+  background: #ffccaa;
+  border-radius: 6px 6px 4px 4px;
+}
+
+.char-head::before {
+  content: '';
+  position: absolute;
+  top: -6px;
+  left: 2px;
+  width: 20px;
+  height: 10px;
+  background: #e94560;
+  border-radius: 10px 10px 0 0;
+}
+
+.char-head::after {
+  content: '';
+  position: absolute;
+  top: 8px;
+  left: 4px;
+  width: 4px;
+  height: 4px;
+  background: #333;
+  border-radius: 50%;
+  box-shadow: 10px 0 0 #333;
+}
+
+.char-body {
+  position: absolute;
+  top: 18px;
+  left: 6px;
+  width: 20px;
+  height: 16px;
+  background: #e94560;
+  border-radius: 4px;
+}
+
+.char-leg-back {
+  position: absolute;
+  bottom: 0;
+  left: 6px;
+  width: 8px;
+  height: 16px;
+  background: #1a4a8f;
+  border-radius: 2px;
+  transform-origin: top center;
+  animation: legBack 0.3s ease-in-out infinite;
+}
+
+.char-leg-front {
+  position: absolute;
+  bottom: 0;
+  left: 16px;
+  width: 8px;
+  height: 16px;
+  background: #1a4a8f;
+  border-radius: 2px;
+  transform-origin: top center;
+  animation: legFront 0.3s ease-in-out infinite;
+}
+
+@keyframes characterWalk {
+  0% { left: 20px; }
+  20% { left: 80px; }
+  25% { left: 80px; }
+  40% { left: 130px; }
+  45% { left: 130px; }
+  60% { left: 180px; }
+  65% { left: 180px; }
+  85% { left: 240px; }
+  100% { left: 240px; }
+}
+
+@keyframes legBack {
+  0%, 100% { transform: rotate(-20deg); }
+  50% { transform: rotate(20deg); }
+}
+
+@keyframes legFront {
+  0%, 100% { transform: rotate(20deg); }
+  50% { transform: rotate(-20deg); }
+}
+
+/* Kick pose at specific times */
+.pixel-character::after {
+  content: '';
+  position: absolute;
+  bottom: 2px;
+  right: -8px;
+  width: 12px;
+  height: 6px;
+  background: #1a4a8f;
+  border-radius: 3px;
+  opacity: 0;
+  animation: kickFoot 4s ease-in-out infinite;
+}
+
+@keyframes kickFoot {
+  0%, 22%, 28%, 42%, 48%, 62%, 68%, 100% { opacity: 0; transform: rotate(0deg); }
+  24%, 26% { opacity: 1; transform: rotate(-15deg) translateX(5px); }
+  44%, 46% { opacity: 1; transform: rotate(-15deg) translateX(5px); }
+  64%, 66% { opacity: 1; transform: rotate(-15deg) translateX(5px); }
 }
 
 .welcome-title {

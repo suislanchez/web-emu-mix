@@ -3,6 +3,7 @@ import './cheats.css'
 import './welcome.css'
 import './xmb.css'
 import './webrcade.css'
+import './enhancements.css'
 import { auth, saves, sessions, achievements } from './lib/supabase.js'
 import { store, loadRecentGames as loadStoredGames, updateRecentGames } from './lib/store.js'
 import { loadUserData, updateHeaderUI, renderAuthModal } from './components/auth.js'
@@ -35,6 +36,19 @@ import {
   setEmulatorSpeed, toggleFastForward,
   applyAllCheats, captureScreenshot
 } from './lib/emulatorEnhancements.js'
+// Enhancement imports
+import {
+  getAutoResumeState, saveAutoResumeState, clearAutoResumeState,
+  initGamepadSupport, GAMEPAD_BUTTONS, getConnectedGamepads,
+  getSearchHistory, addToSearchHistory, removeFromSearchHistory,
+  getGameRating, setGameRating,
+  getPlayStreaks, recordPlaySession, getStreakCalendar,
+  getPinnedGames, pinGame, unpinGame, getPinnedGameBySlot, isGamePinned,
+  exportAllData, importData,
+  hapticFeedback,
+  initLazyLoading, observeAllImages,
+  showSkeletonLoader, createSkeleton
+} from './lib/enhancements.js'
 
 // Initialize theme immediately
 initTheme()
@@ -164,11 +178,19 @@ async function init() {
   loadStoredGames()
   recentGames = store.getState().recentGames || []
 
+  // Initialize enhancements
+  initLazyLoading()
+  initGamepadSupport({
+    onButtonPress: handleGamepadButton,
+  })
+
   renderSystems()
   populateSystemFilter()
+  renderRecentlyPlayedWidget()
   renderRecentGames()
   setupEventListeners()
   setupLibraryToolbar()
+  setupQuickLaunchShortcuts()
 
   // Initialize auth
   try {
