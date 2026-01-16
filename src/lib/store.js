@@ -46,9 +46,25 @@ export function loadRecentGames() {
   try {
     const stored = localStorage.getItem('retroplay_recent')
     if (stored) {
-      store.setState({ recentGames: JSON.parse(stored) })
+      const games = JSON.parse(stored)
+      store.setState({ recentGames: games })
+      return games
     }
   } catch (e) {
     console.error('Failed to load recent games:', e)
   }
+  return store.getState().recentGames || []
+}
+
+// Delete a game by ID
+export function deleteGameById(gameId) {
+  const { recentGames } = store.getState()
+  const index = recentGames.findIndex(g => g.id === gameId || g.fileName === gameId)
+  if (index !== -1) {
+    const updatedGames = [...recentGames]
+    updatedGames.splice(index, 1)
+    updateRecentGames(updatedGames)
+    return true
+  }
+  return false
 }

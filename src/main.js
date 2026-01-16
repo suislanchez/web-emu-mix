@@ -595,8 +595,19 @@ function handleFile(file) {
 }
 
 async function launchEmulator(romUrl, gameInfo) {
+  // Check for auto-resume state
+  const resumeState = getAutoResumeState(gameInfo.gameId)
+  let shouldResume = false
+
+  if (resumeState) {
+    shouldResume = await showAutoResumePrompt(gameInfo, resumeState)
+  }
+
   showLoading('Loading emulator...')
   currentGame = gameInfo
+
+  // Record play session for streaks
+  recordPlaySession()
 
   // Start session if logged in
   const { user } = store.getState()
@@ -606,6 +617,8 @@ async function launchEmulator(romUrl, gameInfo) {
       currentSession = session
       sessionStartTime = Date.now()
     } catch (e) { console.log('Session tracking unavailable') }
+  } else {
+    sessionStartTime = Date.now()
   }
 
   libraryView.style.display = 'none'
@@ -633,12 +646,45 @@ async function launchEmulator(romUrl, gameInfo) {
     startRewindCapture()
     // Apply any saved cheats
     setTimeout(() => applyAllCheats(gameInfo.gameId), 1000)
+
+    // Load auto-resume state if user chose to continue
+    if (shouldResume && resumeState?.stateData) {
+      setTimeout(() => {
+        try {
+          const binary = atob(resumeState.stateData)
+          const bytes = new Uint8Array(binary.length)
+          for (let i = 0; i < binary.length; i++) {
+            bytes[i] = binary.charCodeAt(i)
+          }
+          if (window.EJS_emulator?.gameManager?.loadSaveFiles) {
+            window.EJS_emulator.gameManager.loadSaveFiles(bytes.buffer)
+            showToast('Game resumed!', 'success')
+          }
+        } catch (e) {
+          console.log('Could not restore auto-resume state:', e)
+        }
+      }, 1500)
+    }
   }
   script.onerror = () => { hideLoading(); showToast('Failed to load emulator', 'error'); showLibrary() }
   document.body.appendChild(script)
 }
 
 async function endSession() {
+  // Save auto-resume state before ending
+  if (currentGame && window.EJS_emulator) {
+    try {
+      const saveData = window.EJS_emulator.gameManager.getSaveFile()
+      if (saveData) {
+        // Convert to base64 for storage
+        const base64 = btoa(String.fromCharCode(...new Uint8Array(saveData)))
+        saveAutoResumeState(currentGame.gameId, currentGame.name, currentGame.systemId, base64)
+      }
+    } catch (e) {
+      console.log('Could not save auto-resume state:', e)
+    }
+  }
+
   // Always update local play stats
   if (currentGame && sessionStartTime) {
     const playtimeSeconds = Math.floor((Date.now() - sessionStartTime) / 1000)
@@ -1051,6 +1097,228 @@ function setupMobileDrawer() {
   })
 }
 
+// ============================================
+// ENHANCEMENT FEATURES
+// ============================================
+
+// Recently Played Widget with quick resume
+function renderRecentlyPlayedWidget() {
+  const container = document.getElementById('recently-played-widget')
+  if (!container) {
+    // Create widget if doesn't exist
+    const libraryView = document.getElementById('library-view')
+    const sectionHeader = libraryView?.querySelector('.section-header')
+    if (!sectionHeader) return
+
+    const widget = document.createElement('div')
+    widget.id = 'recently-played-widget'
+    widget.className = 'recently-played-widget'
+    sectionHeader.parentNode.insertBefore(widget, sectionHeader)
+  }
+
+  const widgetEl = document.getElementById('recently-played-widget')
+  if (!widgetEl || recentGames.length === 0) {
+    if (widgetEl) widgetEl.style.display = 'none'
+    return
+  }
+
+  widgetEl.style.display = 'block'
+  const pinnedGames = getPinnedGames()
+  const recentFive = recentGames.slice(0, 5)
+
+  // Get streaks for display
+  const streaks = getPlayStreaks()
+
+  widgetEl.innerHTML = `
+    <div class="recently-played-header">
+      <h3>Continue Playing</h3>
+      ${streaks.currentStreak > 0 ? `
+        <div class="streak-badge" title="${streaks.currentStreak} day streak!">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c.5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6z"/></svg>
+          ${streaks.currentStreak}
+        </div>
+      ` : ''}
+    </div>
+    <div class="recently-played-list">
+      ${recentFive.map((game, i) => {
+        const pinned = pinnedGames.find(p => p.gameId === game.gameId)
+        const hasResume = getAutoResumeState(game.gameId)
+        return `
+          <div class="recent-game-item" data-index="${i}" data-game-id="${game.gameId}">
+            ${pinned ? `<div class="recent-game-pinned">${pinned.slot}</div>` : ''}
+            ${hasResume ? `<div class="recent-game-resume"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg></div>` : ''}
+            <img class="recent-game-cover" src="${game.coverUrl || ''}" alt="${game.name}"
+              onerror="this.style.display='none'"
+              style="${!game.coverUrl ? 'display:none' : ''}"/>
+            ${!game.coverUrl ? `<div class="recent-game-cover" style="display:flex;align-items:center;justify-content:center;color:${SYSTEM_COLORS[game.systemId]}">${SYSTEM_SVG_ICONS[game.systemId] || ''}</div>` : ''}
+            <div class="recent-game-info">
+              <div class="recent-game-title">${game.name}</div>
+              <div class="recent-game-system">${game.systemName || game.systemId}</div>
+            </div>
+          </div>
+        `
+      }).join('')}
+    </div>
+  `
+
+  // Click handlers
+  widgetEl.querySelectorAll('.recent-game-item').forEach(item => {
+    item.addEventListener('click', () => {
+      hapticFeedback('light')
+      const index = parseInt(item.dataset.index)
+      playRecentGame(index)
+    })
+  })
+}
+
+// Gamepad button handler for menu navigation
+function handleGamepadButton(gamepadIndex, buttonIndex, value) {
+  // Only handle in library view, not during gameplay
+  if (currentGame && window.EJS_emulator) return
+
+  switch (buttonIndex) {
+    case GAMEPAD_BUTTONS.A:
+      // Select / Play focused item
+      const focused = document.querySelector('.game-card:focus, .game-card.focused')
+      if (focused) {
+        focused.querySelector('.play-btn')?.click()
+      }
+      break
+    case GAMEPAD_BUTTONS.START:
+      // Open settings
+      renderSettingsModal()
+      break
+    case GAMEPAD_BUTTONS.SELECT:
+      // Toggle drawer
+      document.getElementById('hamburger-btn')?.click()
+      break
+  }
+}
+
+// Quick launch shortcuts (1-9 keys)
+function setupQuickLaunchShortcuts() {
+  document.addEventListener('keydown', (e) => {
+    // Only in library view, not in inputs
+    if (currentGame || e.target.matches('input, textarea')) return
+
+    const num = parseInt(e.key)
+    if (num >= 1 && num <= 9) {
+      const pinned = getPinnedGameBySlot(num)
+      if (pinned) {
+        const gameIndex = recentGames.findIndex(g => g.gameId === pinned.gameId)
+        if (gameIndex !== -1) {
+          e.preventDefault()
+          showToast(`Quick launching slot ${num}...`, 'info')
+          playRecentGame(gameIndex)
+        }
+      }
+    }
+  })
+
+  // Listen for showToast events from enhancements
+  window.addEventListener('showToast', (e) => {
+    showToast(e.detail.message, e.detail.type)
+  })
+}
+
+// Auto-resume prompt
+function showAutoResumePrompt(gameInfo, resumeState) {
+  const existing = document.getElementById('auto-resume-modal')
+  if (existing) existing.remove()
+
+  const modal = document.createElement('div')
+  modal.id = 'auto-resume-modal'
+  modal.className = 'auto-resume-modal'
+  modal.innerHTML = `
+    <div class="auto-resume-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polygon points="5 3 19 12 5 21 5 3"/>
+      </svg>
+    </div>
+    <div class="auto-resume-content">
+      <div class="auto-resume-title">Continue where you left off?</div>
+      <div class="auto-resume-subtitle">${gameInfo.name}</div>
+    </div>
+    <div class="auto-resume-actions">
+      <button class="btn btn-outline" id="resume-new">New Game</button>
+      <button class="btn btn-primary" id="resume-continue">Continue</button>
+    </div>
+  `
+
+  document.body.appendChild(modal)
+
+  // Animate in
+  requestAnimationFrame(() => {
+    modal.classList.add('visible')
+  })
+
+  return new Promise((resolve) => {
+    document.getElementById('resume-continue').addEventListener('click', () => {
+      modal.classList.remove('visible')
+      setTimeout(() => modal.remove(), 300)
+      resolve(true)
+    })
+
+    document.getElementById('resume-new').addEventListener('click', () => {
+      modal.classList.remove('visible')
+      setTimeout(() => modal.remove(), 300)
+      clearAutoResumeState(gameInfo.gameId)
+      resolve(false)
+    })
+
+    // Auto-hide after 10 seconds
+    setTimeout(() => {
+      if (modal.parentNode) {
+        modal.classList.remove('visible')
+        setTimeout(() => modal.remove(), 300)
+        resolve(false)
+      }
+    }, 10000)
+  })
+}
+
+// Render star rating component
+function renderStarRating(gameId, size = 'normal') {
+  const rating = getGameRating(gameId)
+  const sizeClass = size === 'small' ? 'game-rating-small' : ''
+
+  return `
+    <div class="game-rating ${sizeClass}" data-game-id="${gameId}">
+      ${[1,2,3,4,5].map(star => `
+        <button class="star ${star <= rating ? 'active' : ''}" data-rating="${star}">
+          <svg viewBox="0 0 24 24" fill="${star <= rating ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+          </svg>
+        </button>
+      `).join('')}
+    </div>
+  `
+}
+
+// Setup star rating click handlers
+function setupRatingHandlers(container) {
+  container.querySelectorAll('.game-rating').forEach(ratingEl => {
+    const gameId = ratingEl.dataset.gameId
+    ratingEl.querySelectorAll('.star').forEach(star => {
+      star.addEventListener('click', (e) => {
+        e.stopPropagation()
+        const rating = parseInt(star.dataset.rating)
+        const currentRating = getGameRating(gameId)
+        // Click same star to clear rating
+        const newRating = rating === currentRating ? 0 : rating
+        setGameRating(gameId, newRating)
+        hapticFeedback('light')
+
+        // Update UI
+        ratingEl.querySelectorAll('.star').forEach((s, i) => {
+          s.classList.toggle('active', i < newRating)
+          s.querySelector('svg').setAttribute('fill', i < newRating ? 'currentColor' : 'none')
+        })
+      })
+    })
+  })
+}
+
 // Setup Discovery Section (Search with dropdown)
 function setupDiscoverySection() {
   const searchInput = document.getElementById('discovery-search-input')
@@ -1119,9 +1387,9 @@ function setupDiscoverySection() {
     })
   }
 
-  // Load recent searches
+  // Load recent searches (uses enhancements.js)
   function loadRecentSearches() {
-    const recent = JSON.parse(localStorage.getItem('recent_game_searches') || '[]')
+    const recent = getSearchHistory()
     const recentSection = document.getElementById('dropdown-recent')
 
     if (recent.length === 0 && recentSection) {
@@ -1141,10 +1409,26 @@ function setupDiscoverySection() {
           <div class="dropdown-item-text">
             <div class="dropdown-item-title">${query}</div>
           </div>
+          <button class="dropdown-item-remove" data-query="${query}" title="Remove">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
         </div>
       `).join('')
 
       recentItems.addEventListener('click', (e) => {
+        // Handle remove button
+        const removeBtn = e.target.closest('.dropdown-item-remove')
+        if (removeBtn) {
+          e.stopPropagation()
+          const query = removeBtn.dataset.query
+          removeFromSearchHistory(query)
+          hapticFeedback('light')
+          loadRecentSearches()
+          return
+        }
+
         const item = e.target.closest('.dropdown-item')
         if (item) {
           const query = item.dataset.search
@@ -1157,12 +1441,7 @@ function setupDiscoverySection() {
   }
 
   function saveRecentSearch(query) {
-    if (!query || query.length < 2) return
-    let recent = JSON.parse(localStorage.getItem('recent_game_searches') || '[]')
-    recent = recent.filter(q => q.toLowerCase() !== query.toLowerCase())
-    recent.unshift(query)
-    recent = recent.slice(0, 10)
-    localStorage.setItem('recent_game_searches', JSON.stringify(recent))
+    addToSearchHistory(query)
   }
 
   function showDropdown() {

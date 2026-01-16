@@ -1,4 +1,5 @@
 import { themes, layouts, loadSettings, saveSettings, applyTheme, applyLayout } from '../lib/themes.js'
+import { exportAllData, importData as importEnhancedData } from '../lib/enhancements.js'
 
 let currentSettings = loadSettings()
 
@@ -463,52 +464,27 @@ async function loadDataStats() {
   }
 }
 
-function exportData() {
-  const data = {
-    version: 1,
-    exportDate: new Date().toISOString(),
-    settings: currentSettings,
-    recentGames: JSON.parse(localStorage.getItem('retroplay_recent') || '[]'),
+async function exportData() {
+  try {
+    await exportAllData()
+    showToast('Data exported successfully!', 'success')
+  } catch (err) {
+    showToast('Failed to export data', 'error')
   }
-
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `retroplay-backup-${new Date().toISOString().split('T')[0]}.json`
-  a.click()
-  URL.revokeObjectURL(url)
-
-  showToast('Data exported successfully!', 'success')
 }
 
-function importData(e) {
+async function importData(e) {
   const file = e.target.files[0]
   if (!file) return
 
-  const reader = new FileReader()
-  reader.onload = (event) => {
-    try {
-      const data = JSON.parse(event.target.result)
-
-      if (data.settings) {
-        currentSettings = { ...currentSettings, ...data.settings }
-        saveSettings(currentSettings)
-        applyTheme(currentSettings.theme)
-      }
-
-      if (data.recentGames) {
-        localStorage.setItem('retroplay_recent', JSON.stringify(data.recentGames))
-      }
-
-      showToast('Data imported successfully!', 'success')
-      closeSettingsModal()
-      location.reload()
-    } catch (err) {
-      showToast('Failed to import data', 'error')
-    }
+  try {
+    const result = await importEnhancedData(file)
+    showToast(`Imported ${result.gamesImported} games, ${result.collectionsImported} collections!`, 'success')
+    closeSettingsModal()
+    location.reload()
+  } catch (err) {
+    showToast('Failed to import data: ' + err.message, 'error')
   }
-  reader.readAsText(file)
 }
 
 function clearRecentGames() {

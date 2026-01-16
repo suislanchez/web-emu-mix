@@ -1,7 +1,8 @@
 // webЯcade-style View Component
 // Netflix/TV-style interface with hero section and horizontal carousels
 
-import { getRecentGames, deleteGame, toggleFavorite, isFavorite } from '../lib/library.js'
+import { toggleFavorite, isFavorite } from '../lib/library.js'
+import { loadRecentGames, deleteGameById } from '../lib/store.js'
 
 let selectedGameIndex = 0
 let selectedCategoryIndex = 0
@@ -11,7 +12,7 @@ let onPlayGame = null
 
 export function renderWebrcadeView(container, playGameCallback) {
   onPlayGame = playGameCallback
-  const recentGames = getRecentGames()
+  const recentGames = loadRecentGames()
 
   // Group games by system
   const gamesBySystem = {}
@@ -236,7 +237,7 @@ function setupWebrcadeEvents(container) {
     deleteBtn.addEventListener('click', () => {
       const gameId = deleteBtn.dataset.gameId
       if (confirm('Remove this game from your library?')) {
-        deleteGame(gameId)
+        deleteGameById(gameId)
         renderWebrcadeView(container, onPlayGame)
       }
     })
