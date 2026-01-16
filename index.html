@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>PixelVault - Classic Gaming Hub</title>
+    <link rel="icon" type="image/svg+xml" href="/gamepad.svg" />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div id="app">
+      <!-- Header -->
+      <header class="header">
+        <div class="header-left">
+          <h1>PixelVault</h1>
+          <span class="tagline">Classic Gaming Hub</span>
+        </div>
+        <div class="header-nav">
+          <button class="nav-btn" id="settings-btn" title="Settings">
+            <span>&#9881;</span>
+          </button>
+          <button class="nav-btn" id="shortcuts-btn" title="Keyboard Shortcuts">
+            <span>&#9000;</span>
+          </button>
+          <button class="nav-btn" id="about-btn" title="About">
+            <span>&#9432;</span>
+          </button>
+        </div>
+        <div class="header-right" id="header-right">
+          <!-- Auth buttons / User menu will be populated by JS -->
+        </div>
+      </header>
+
+      <!-- Main Content -->
+      <main class="main-content">
+        <!-- Library View (shown by default) -->
+        <section id="library-view" class="library-view">
+          <!-- System Selector -->
+          <div class="system-selector">
+            <h2>Select System</h2>
+            <div class="system-grid" id="system-grid">
+              <!-- Systems will be populated by JS -->
+            </div>
+          </div>
+
+          <!-- Game Upload Area -->
+          <div class="upload-section">
+            <div class="upload-area" id="upload-area">
+              <div class="upload-icon">📁</div>
+              <p>Drag & drop ROM file here</p>
+              <p class="upload-hint">or click to browse</p>
+              <input type="file" id="rom-input" accept=".nes,.sfc,.smc,.gba,.gbc,.gb,.nds,.n64,.z64,.bin,.iso,.cue,.md,.gen,.sms,.gg" hidden />
+            </div>
+            <p class="supported-formats" id="supported-formats">Select a system to see supported formats</p>
+          </div>
+
+          <!-- Recent Games -->
+          <div class="recent-games" id="recent-games-section" style="display: none;">
+            <h2>Recent Games</h2>
+            <div class="games-grid" id="games-grid">
+              <!-- Games will be populated by JS -->
+            </div>
+          </div>
+        </section>
+
+        <!-- Emulator View (hidden by default) -->
+        <section id="emulator-view" class="emulator-view" style="display: none;">
+          <div class="emulator-controls">
+            <button id="back-btn" class="control-btn">← Back to Library</button>
+            <span id="game-title" class="game-title"></span>
+            <div class="emulator-actions">
+              <button id="save-state-btn" class="control-btn">💾 Save</button>
+              <button id="load-state-btn" class="control-btn">📂 Load</button>
+              <button id="cloud-save-btn" class="control-btn" title="Cloud Save">☁️ Cloud</button>
+              <button id="info-panel-btn" class="control-btn" title="Game Info">ℹ️ Info</button>
+              <button id="fullscreen-btn" class="control-btn">⛶ Fullscreen</button>
+            </div>
+          </div>
+          <div id="emulator-container" class="emulator-container">
+            <div id="game"></div>
+          </div>
+        </section>
+      </main>
+
+      <!-- Footer -->
+      <footer class="footer">
+        <div class="footer-content">
+          <div class="footer-main">
+            <div class="footer-section">
+              <h4>About</h4>
+              <p>PixelVault is a web-based retro gaming platform powered by EmulatorJS. Play your favorite classic games directly in your browser.</p>
+            </div>
+            <div class="footer-section">
+              <h4>Quick Links</h4>
+              <div class="footer-links">
+                <a id="footer-settings">Settings</a>
+                <a id="footer-shortcuts">Keyboard Shortcuts</a>
+                <a id="footer-about">About PixelVault</a>
+              </div>
+            </div>
+            <div class="footer-section">
+              <h4>Supported Systems</h4>
+              <div class="footer-systems">
+                <span class="system-tag">NES</span>
+                <span class="system-tag">SNES</span>
+                <span class="system-tag">GB</span>
+                <span class="system-tag">GBC</span>
+                <span class="system-tag">GBA</span>
+                <span class="system-tag">NDS</span>
+                <span class="system-tag">N64</span>
+                <span class="system-tag">Genesis</span>
+                <span class="system-tag">PS1</span>
+                <span class="system-tag">Arcade</span>
+              </div>
+            </div>
+            <div class="footer-section">
+              <h4>Resources</h4>
+              <div class="footer-links">
+                <a href="https://emulatorjs.org" target="_blank">EmulatorJS</a>
+                <a href="https://github.com/AntimatterReactor/EmulatorJS" target="_blank">GitHub</a>
+                <a href="https://docs.libretro.com/" target="_blank">Libretro Docs</a>
+              </div>
+            </div>
+          </div>
+          <div class="footer-bottom">
+            <div class="footer-brand">
+              <span>&#127918;</span>
+              <span>PixelVault</span>
+            </div>
+            <p class="footer-legal">Only play games you legally own. PixelVault does not host or distribute ROMs.</p>
+          </div>
+        </div>
+      </footer>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
