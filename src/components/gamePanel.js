@@ -17,16 +17,16 @@ export function renderGamePanel(gameId, gameName, systemId) {
 
     <div class="panel-actions">
       <button class="panel-btn" id="favorite-btn" title="Add to favorites">
-        <span id="favorite-icon">🤍</span>
+        <span id="favorite-icon" data-favorite="false"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></span>
       </button>
-      <button class="panel-btn" id="screenshot-btn" title="Take screenshot">📸</button>
-      <button class="panel-btn" id="panel-close" title="Close panel">✕</button>
+      <button class="panel-btn" id="screenshot-btn" title="Take screenshot"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></button>
+      <button class="panel-btn" id="panel-close" title="Close panel"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     </div>
 
     <div class="panel-section">
       <h4>Your Rating</h4>
       <div class="rating-stars" id="rating-stars">
-        ${[1, 2, 3, 4, 5].map(n => `<span class="star" data-rating="${n}">☆</span>`).join('')}
+        ${[1, 2, 3, 4, 5].map(n => `<span class="star" data-rating="${n}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span>`).join('')}
       </div>
     </div>
 
@@ -74,16 +74,18 @@ function setupPanelEvents(gameId, gameName, systemId) {
     }
 
     const icon = document.getElementById('favorite-icon')
-    const isFav = icon.textContent === '❤️'
+    const isFav = icon.dataset.favorite === 'true'
 
     try {
       if (isFav) {
         await favorites.remove(user.id, gameId)
-        icon.textContent = '🤍'
+        icon.dataset.favorite = 'false'
+        icon.querySelector('svg').setAttribute('fill', 'none')
         showToast('Removed from favorites', 'success')
       } else {
         await favorites.add(user.id, gameId, gameName, systemId)
-        icon.textContent = '❤️'
+        icon.dataset.favorite = 'true'
+        icon.querySelector('svg').setAttribute('fill', 'currentColor')
         showToast('Added to favorites!', 'success')
       }
     } catch (error) {
@@ -159,7 +161,9 @@ async function loadGamePanelData(gameId) {
     // Check if favorite
     try {
       const isFav = await favorites.isFavorite(user.id, gameId)
-      document.getElementById('favorite-icon').textContent = isFav ? '❤️' : '🤍'
+      const favIcon = document.getElementById('favorite-icon')
+      favIcon.dataset.favorite = isFav ? 'true' : 'false'
+      favIcon.querySelector('svg').setAttribute('fill', isFav ? 'currentColor' : 'none')
     } catch (e) {
       console.error('Error checking favorite:', e)
     }
@@ -202,7 +206,7 @@ async function loadCommunityRating(gameId) {
 
     if (rating.count > 0) {
       container.innerHTML = `
-        <span class="rating-value">${rating.average.toFixed(1)} ⭐</span>
+        <span class="rating-value">${rating.average.toFixed(1)} <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span>
         <span class="rating-count">(${rating.count} rating${rating.count !== 1 ? 's' : ''})</span>
       `
     } else {
@@ -252,7 +256,10 @@ async function submitComment(gameId) {
 function updateStars(rating) {
   const stars = document.querySelectorAll('#rating-stars .star')
   stars.forEach((star, index) => {
-    star.textContent = index < rating ? '★' : '☆'
+    const svg = star.querySelector('svg')
+    if (svg) {
+      svg.setAttribute('fill', index < rating ? 'currentColor' : 'none')
+    }
     star.classList.toggle('filled', index < rating)
   })
 }
@@ -260,7 +267,10 @@ function updateStars(rating) {
 function highlightStars(rating) {
   const stars = document.querySelectorAll('#rating-stars .star')
   stars.forEach((star, index) => {
-    star.textContent = index < rating ? '★' : '☆'
+    const svg = star.querySelector('svg')
+    if (svg) {
+      svg.setAttribute('fill', index < rating ? 'currentColor' : 'none')
+    }
   })
 }
 

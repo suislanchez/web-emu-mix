@@ -343,3 +343,349 @@ create index idx_comments_game_id on comments(game_id);
 create index idx_ratings_game_id on ratings(game_id);
 create index idx_favorites_user_id on favorites(user_id);
 create index idx_game_saves_user_id on game_saves(user_id);
+
+-- ============================================
+-- GAME CATALOG TABLE (Indexed games from Myrient)
+-- ============================================
+create table public.game_catalog (
+  id uuid default uuid_generate_v4() primary key,
+  myrient_path text unique not null,
+  title text not null,
+  system_id text not null,
+  region text,
+  languages text[],
+  version text,
+  file_size bigint,
+  file_extension text default 'zip',
+
+  -- IGDB metadata (populated async)
+  igdb_id integer,
+  description text,
+  genres text[],
+  series text,
+  release_date date,
+  developer text,
+  publisher text,
+  cover_url text,
+  igdb_rating numeric(5,2),
+
+  -- Timestamps
+  indexed_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  metadata_updated_at timestamp with time zone,
+
+  -- Full-text search vector
+  search_vector tsvector generated always as (
+    setweight(to_tsvector('english', coalesce(title, '')), 'A') ||
+    setweight(to_tsvector('english', coalesce(series, '')), 'B') ||
+    setweight(to_tsvector('english', coalesce(description, '')), 'C')
+  ) stored
+);
+
+alter table public.game_catalog enable row level security;
+
+-- Game catalog is publicly readable (no auth required to browse)
+create policy "Game catalog is publicly readable"
+  on public.game_catalog for select
+  using (true);
+
+-- Indexes for efficient searching and filtering
+create index idx_game_catalog_system on game_catalog(system_id);
+create index idx_game_catalog_title on game_catalog(lower(title));
+create index idx_game_catalog_search on game_catalog using gin(search_vector);
+create index idx_game_catalog_genres on game_catalog using gin(genres);
+create index idx_game_catalog_region on game_catalog(region);
+create index idx_game_catalog_series on game_catalog(series);
+
+-- ============================================
+-- USER LIBRARY TABLE (User's game collection)
+-- ============================================
+create table public.user_library (
+  id uuid default uuid_generate_v4() primary key,
+  user_id uuid references public.profiles(id) on delete cascade not null,
+  catalog_id uuid references public.game_catalog(id) on delete set null,
+
+  -- Storage location (one of: supabase, local, google_drive, dropbox)
+  storage_type text not null check (storage_type in ('supabase', 'local', 'google_drive', 'dropbox')),
+  storage_path text,
+  storage_file_id text,
+
+  -- File info
+  local_filename text,
+  file_size bigint,
+
+  -- User can override catalog metadata
+  custom_title text,
+  custom_cover_url text,
+
+  -- Download tracking
+  download_status text default 'pending' check (download_status in ('pending', 'downloading', 'completed', 'failed', 'external')),
+  download_progress integer default 0,
+
+  -- Timestamps
+  added_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  last_played_at timestamp with time zone,
+
+  unique(user_id, catalog_id, storage_type)
+);
+
+alter table public.user_library enable row level security;
+
+create policy "Users can view own library"
+  on public.user_library for select
+  using (auth.uid() = user_id);
+
+create policy "Users can add to own library"
+  on public.user_library for insert
+  with check (auth.uid() = user_id);
+
+create policy "Users can update own library"
+  on public.user_library for update
+  using (auth.uid() = user_id);
+
+create policy "Users can delete from own library"
+  on public.user_library for delete
+  using (auth.uid() = user_id);
+
+create index idx_user_library_user on user_library(user_id);
+create index idx_user_library_status on user_library(download_status);
+create index idx_user_library_catalog on user_library(catalog_id);
+
+-- ============================================
+-- EXTERNAL STORAGE CONNECTIONS TABLE
+-- ============================================
+create table public.external_storage_connections (
+  id uuid default uuid_generate_v4() primary key,
+  user_id uuid references public.profiles(id) on delete cascade not null,
+  provider text not null check (provider in ('google_drive', 'dropbox')),
+
+  -- OAuth tokens (these should be encrypted in production)
+  access_token text not null,
+  refresh_token text,
+  token_expires_at timestamp with time zone,
+
+  -- Account info
+  account_email text,
+  storage_quota_bytes bigint,
+  storage_used_bytes bigint,
+
+  -- App folder for RetroPlay files
+  app_folder_id text,
+  app_folder_path text,
+
+  connected_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  last_synced_at timestamp with time zone,
+
+  unique(user_id, provider)
+);
+
+alter table public.external_storage_connections enable row level security;
+
+create policy "Users can view own storage connections"
+  on public.external_storage_connections for select
+  using (auth.uid() = user_id);
+
+create policy "Users can create own storage connections"
+  on public.external_storage_connections for insert
+  with check (auth.uid() = user_id);
+
+create policy "Users can update own storage connections"
+  on public.external_storage_connections for update
+  using (auth.uid() = user_id);
+
+create policy "Users can delete own storage connections"
+  on public.external_storage_connections for delete
+  using (auth.uid() = user_id);
+
+-- ============================================
+-- USER STORAGE QUOTAS TABLE (for Supabase storage)
+-- ============================================
+create table public.user_storage_quotas (
+  user_id uuid references public.profiles(id) on delete cascade primary key,
+  quota_bytes bigint default 5368709120, -- 5GB default
+  used_bytes bigint default 0,
+  last_calculated_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+alter table public.user_storage_quotas enable row level security;
+
+create policy "Users can view own quota"
+  on public.user_storage_quotas for select
+  using (auth.uid() = user_id);
+
+-- Only the system can update quotas (via service role)
+create policy "Service can manage quotas"
+  on public.user_storage_quotas for all
+  using (true)
+  with check (true);
+
+-- ============================================
+-- USER ROMS STORAGE BUCKET
+-- ============================================
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'user_roms',
+  'user_roms',
+  false,
+  536870912, -- 512MB max file size
+  array['application/zip', 'application/x-7z-compressed', 'application/octet-stream', 'application/x-zip-compressed']
+);
+
+-- Storage policies for user ROMs
+create policy "Users can access their own ROMs"
+  on storage.objects for select
+  using (bucket_id = 'user_roms' and auth.uid()::text = (storage.foldername(name))[1]);
+
+create policy "Users can upload their own ROMs"
+  on storage.objects for insert
+  with check (bucket_id = 'user_roms' and auth.uid()::text = (storage.foldername(name))[1]);
+
+create policy "Users can update their own ROMs"
+  on storage.objects for update
+  using (bucket_id = 'user_roms' and auth.uid()::text = (storage.foldername(name))[1]);
+
+create policy "Users can delete their own ROMs"
+  on storage.objects for delete
+  using (bucket_id = 'user_roms' and auth.uid()::text = (storage.foldername(name))[1]);
+
+-- ============================================
+-- HELPER FUNCTIONS FOR GAME CATALOG
+-- ============================================
+
+-- Function to get distinct genres from the catalog
+create or replace function get_distinct_genres()
+returns table(genre text, count bigint)
+language sql
+security definer
+as $$
+  select unnest(genres) as genre, count(*) as count
+  from game_catalog
+  where genres is not null
+  group by genre
+  order by count desc;
+$$;
+
+-- Function to get distinct series from the catalog
+create or replace function get_distinct_series()
+returns table(series text, count bigint)
+language sql
+security definer
+as $$
+  select series, count(*) as count
+  from game_catalog
+  where series is not null
+  group by series
+  order by count desc;
+$$;
+
+-- Function to update user storage quota (called after uploads/deletions)
+create or replace function update_user_storage_quota(user_id_param uuid)
+returns void
+language plpgsql
+security definer
+as $$
+declare
+  total_size bigint;
+begin
+  -- Calculate total size of user's ROMs in storage
+  select coalesce(sum(file_size), 0) into total_size
+  from user_library
+  where user_id = user_id_param
+    and storage_type = 'supabase'
+    and download_status = 'completed';
+
+  -- Upsert the quota record
+  insert into user_storage_quotas (user_id, used_bytes, last_calculated_at)
+  values (user_id_param, total_size, now())
+  on conflict (user_id)
+  do update set
+    used_bytes = total_size,
+    last_calculated_at = now();
+end;
+$$;
+
+-- Function to search game catalog with filters
+create or replace function search_game_catalog(
+  search_query text default null,
+  system_filter text default null,
+  genre_filter text default null,
+  region_filter text default null,
+  series_filter text default null,
+  sort_by text default 'title',
+  sort_asc boolean default true,
+  page_num integer default 0,
+  page_size integer default 50
+)
+returns table(
+  id uuid,
+  myrient_path text,
+  title text,
+  system_id text,
+  region text,
+  languages text[],
+  version text,
+  file_size bigint,
+  igdb_id integer,
+  description text,
+  genres text[],
+  series text,
+  release_date date,
+  developer text,
+  publisher text,
+  cover_url text,
+  igdb_rating numeric,
+  total_count bigint
+)
+language plpgsql
+security definer
+as $$
+declare
+  total bigint;
+begin
+  -- Get total count first
+  select count(*) into total
+  from game_catalog gc
+  where
+    (search_query is null or gc.search_vector @@ websearch_to_tsquery('english', search_query))
+    and (system_filter is null or gc.system_id = system_filter)
+    and (genre_filter is null or genre_filter = any(gc.genres))
+    and (region_filter is null or gc.region = region_filter)
+    and (series_filter is null or gc.series = series_filter);
+
+  return query
+  select
+    gc.id,
+    gc.myrient_path,
+    gc.title,
+    gc.system_id,
+    gc.region,
+    gc.languages,
+    gc.version,
+    gc.file_size,
+    gc.igdb_id,
+    gc.description,
+    gc.genres,
+    gc.series,
+    gc.release_date,
+    gc.developer,
+    gc.publisher,
+    gc.cover_url,
+    gc.igdb_rating,
+    total as total_count
+  from game_catalog gc
+  where
+    (search_query is null or gc.search_vector @@ websearch_to_tsquery('english', search_query))
+    and (system_filter is null or gc.system_id = system_filter)
+    and (genre_filter is null or genre_filter = any(gc.genres))
+    and (region_filter is null or gc.region = region_filter)
+    and (series_filter is null or gc.series = series_filter)
+  order by
+    case when sort_by = 'title' and sort_asc then gc.title end asc,
+    case when sort_by = 'title' and not sort_asc then gc.title end desc,
+    case when sort_by = 'release_date' and sort_asc then gc.release_date end asc nulls last,
+    case when sort_by = 'release_date' and not sort_asc then gc.release_date end desc nulls last,
+    case when sort_by = 'rating' and sort_asc then gc.igdb_rating end asc nulls last,
+    case when sort_by = 'rating' and not sort_asc then gc.igdb_rating end desc nulls last
+  limit page_size
+  offset page_num * page_size;
+end;
+$$;

@@ -5,25 +5,121 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>PixelVault - Classic Gaming Hub</title>
     <link rel="icon" type="image/svg+xml" href="/gamepad.svg" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="apple-touch-icon" href="/icon-192.svg" />
+    <meta name="theme-color" content="#e94560" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="description" content="PixelVault - Play classic retro games directly in your browser. NES, SNES, GBA, N64, PS1 and more." />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
     <div id="app">
+      <!-- Mobile Navigation Overlay -->
+      <div class="mobile-nav-overlay" id="mobile-nav-overlay"></div>
+
+      <!-- Mobile Navigation Drawer -->
+      <nav class="mobile-nav-drawer" id="mobile-nav-drawer">
+        <div class="drawer-header">
+          <h2 class="drawer-logo">
+            <span class="logo-pixel">Pixel</span><span class="logo-vault">Vault</span>
+          </h2>
+          <button class="drawer-close-btn" id="drawer-close-btn">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+
+        <div class="drawer-user-section" id="drawer-user-section">
+          <!-- User profile or sign-in prompt - populated by JS -->
+        </div>
+
+        <div class="drawer-nav-items">
+          <button class="drawer-nav-item active" id="drawer-home">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
+            </svg>
+            <span>Library</span>
+          </button>
+          <button class="drawer-nav-item" id="drawer-browse">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+            </svg>
+            <span>Browse Games</span>
+          </button>
+          <button class="drawer-nav-item" id="drawer-settings">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+            </svg>
+            <span>Settings</span>
+          </button>
+          <button class="drawer-nav-item" id="drawer-shortcuts">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M8 12h.01M12 12h.01M16 12h.01M6 16h8"/>
+            </svg>
+            <span>Keyboard Shortcuts</span>
+          </button>
+          <button class="drawer-nav-item" id="drawer-about">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
+            </svg>
+            <span>About</span>
+          </button>
+        </div>
+
+        <div class="drawer-footer">
+          <div class="drawer-systems-preview">
+            <span class="system-tag-mini">NES</span>
+            <span class="system-tag-mini">SNES</span>
+            <span class="system-tag-mini">GB</span>
+            <span class="system-tag-mini">GBA</span>
+            <span class="system-tag-mini">+8</span>
+          </div>
+          <p class="drawer-legal">Play games you own legally</p>
+        </div>
+      </nav>
+
       <!-- Header -->
       <header class="header">
+        <button class="hamburger-btn" id="hamburger-btn" aria-label="Open menu">
+          <span class="hamburger-line"></span>
+          <span class="hamburger-line"></span>
+          <span class="hamburger-line"></span>
+        </button>
         <div class="header-left">
-          <h1>PixelVault</h1>
-          <span class="tagline">Classic Gaming Hub</span>
+          <h1 class="logo-animated">
+            <span class="logo-pixel">Pixel</span><span class="logo-vault">Vault</span>
+          </h1>
+          <div class="sprite-scene">
+            <div class="sprite-runner"></div>
+            <div class="sprite-ground"></div>
+            <div class="sprite-obstacle obs-1"></div>
+            <div class="sprite-obstacle obs-2"></div>
+            <div class="sprite-coin coin-1"></div>
+            <div class="sprite-coin coin-2"></div>
+          </div>
         </div>
         <div class="header-nav">
+          <button class="btn btn-primary" id="browse-games-btn" title="Browse Games">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+            Browse Games
+          </button>
+          <button class="btn btn-outline" id="my-library-btn" title="My Library">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+            My Library
+          </button>
           <button class="nav-btn" id="settings-btn" title="Settings">
-            <span>&#9881;</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
           </button>
           <button class="nav-btn" id="shortcuts-btn" title="Keyboard Shortcuts">
-            <span>&#9000;</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M8 12h.01M12 12h.01M16 12h.01M6 16h8"/></svg>
           </button>
           <button class="nav-btn" id="about-btn" title="About">
-            <span>&#9432;</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
           </button>
         </div>
         <div class="header-right" id="header-right">
@@ -35,6 +131,72 @@
       <main class="main-content">
         <!-- Library View (shown by default) -->
         <section id="library-view" class="library-view">
+          <!-- Game Discovery Hero Section -->
+          <div class="discovery-hero" id="discovery-hero">
+            <div class="discovery-content">
+              <h2 class="discovery-title">Discover Games</h2>
+              <p class="discovery-subtitle">Search thousands of retro games from the catalog</p>
+
+              <div class="discovery-search-container">
+                <div class="discovery-search" id="discovery-search">
+                  <svg class="discovery-search-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+                  </svg>
+                  <input
+                    type="text"
+                    id="discovery-search-input"
+                    placeholder="Search for games... (e.g., Super Mario, Zelda, Pokemon)"
+                    autocomplete="off"
+                  />
+                  <kbd class="search-kbd">Enter</kbd>
+
+                  <!-- Search Suggestions Dropdown -->
+                  <div class="discovery-dropdown" id="discovery-dropdown">
+                    <div class="dropdown-section" id="dropdown-recent">
+                      <div class="dropdown-section-title">Recent Searches</div>
+                      <div class="dropdown-items" id="dropdown-recent-items"></div>
+                    </div>
+                    <div class="dropdown-section" id="dropdown-suggestions">
+                      <div class="dropdown-section-title">Suggestions</div>
+                      <div class="dropdown-items" id="dropdown-suggestion-items"></div>
+                    </div>
+                    <div class="dropdown-section" id="dropdown-systems">
+                      <div class="dropdown-section-title">Browse by System</div>
+                      <div class="dropdown-systems-grid" id="dropdown-systems-grid"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="discovery-actions">
+                <button class="discovery-btn discovery-btn-primary" id="browse-all-btn">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+                    <rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
+                  </svg>
+                  Browse All Games
+                </button>
+                <button class="discovery-btn discovery-btn-secondary" id="my-cloud-library-btn">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                  </svg>
+                  My Cloud Library
+                </button>
+              </div>
+
+              <div class="discovery-quick-filters">
+                <span class="quick-filter-label">Popular:</span>
+                <button class="quick-filter-chip" data-system="nes">NES</button>
+                <button class="quick-filter-chip" data-system="snes">SNES</button>
+                <button class="quick-filter-chip" data-system="gba">GBA</button>
+                <button class="quick-filter-chip" data-system="n64">N64</button>
+                <button class="quick-filter-chip" data-system="psx">PS1</button>
+                <button class="quick-filter-chip" data-genre="Action">Action</button>
+                <button class="quick-filter-chip" data-genre="RPG">RPG</button>
+              </div>
+            </div>
+          </div>
+
           <!-- System Selector -->
           <div class="system-selector">
             <h2>Select System</h2>
@@ -46,7 +208,14 @@
           <!-- Game Upload Area -->
           <div class="upload-section">
             <div class="upload-area" id="upload-area">
-              <div class="upload-icon">📁</div>
+              <div class="upload-icon">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <rect x="3" y="3" width="7" height="7" rx="1"/>
+                  <rect x="14" y="3" width="7" height="7" rx="1"/>
+                  <rect x="3" y="14" width="7" height="7" rx="1"/>
+                  <path d="M17.5 14v7M14 17.5h7"/>
+                </svg>
+              </div>
               <p>Drag & drop ROM file here</p>
               <p class="upload-hint">or click to browse</p>
               <input type="file" id="rom-input" accept=".nes,.sfc,.smc,.gba,.gbc,.gb,.nds,.n64,.z64,.bin,.iso,.cue,.md,.gen,.sms,.gg" hidden />
@@ -56,7 +225,49 @@
 
           <!-- Recent Games -->
           <div class="recent-games" id="recent-games-section" style="display: none;">
-            <h2>Recent Games</h2>
+            <div class="section-header">
+              <h2>My Games</h2>
+              <div class="section-actions">
+                <button class="toolbar-btn" id="stats-btn" title="Play Statistics">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                </button>
+                <button class="toolbar-btn" id="leaderboards-btn" title="Leaderboards">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
+                </button>
+                <button class="toolbar-btn" id="gallery-btn" title="Screenshot Gallery">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                </button>
+                <button class="toolbar-btn" id="collections-btn" title="Collections">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                </button>
+              </div>
+            </div>
+
+            <!-- Library Toolbar -->
+            <div class="library-toolbar">
+              <div class="search-box">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="text" id="search-input" placeholder="Search games..." />
+              </div>
+              <div class="filter-group">
+                <select id="system-filter" class="filter-select">
+                  <option value="all">All Systems</option>
+                </select>
+                <select id="sort-select" class="filter-select">
+                  <option value="recent">Recently Played</option>
+                  <option value="name">Name A-Z</option>
+                  <option value="system">By System</option>
+                </select>
+              </div>
+              <button class="toolbar-btn" id="favorites-filter" title="Show Favorites Only">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+              </button>
+              <button class="toolbar-btn random-btn" id="random-btn" title="Play Random Game">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8" cy="8" r="1.5" fill="currentColor"/><circle cx="16" cy="8" r="1.5" fill="currentColor"/><circle cx="8" cy="16" r="1.5" fill="currentColor"/><circle cx="16" cy="16" r="1.5" fill="currentColor"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/></svg>
+                Random
+              </button>
+            </div>
+
             <div class="games-grid" id="games-grid">
               <!-- Games will be populated by JS -->
             </div>
@@ -66,14 +277,15 @@
         <!-- Emulator View (hidden by default) -->
         <section id="emulator-view" class="emulator-view" style="display: none;">
           <div class="emulator-controls">
-            <button id="back-btn" class="control-btn">← Back to Library</button>
+            <button id="back-btn" class="control-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg> Back to Library</button>
             <span id="game-title" class="game-title"></span>
             <div class="emulator-actions">
-              <button id="save-state-btn" class="control-btn">💾 Save</button>
-              <button id="load-state-btn" class="control-btn">📂 Load</button>
-              <button id="cloud-save-btn" class="control-btn" title="Cloud Save">☁️ Cloud</button>
-              <button id="info-panel-btn" class="control-btn" title="Game Info">ℹ️ Info</button>
-              <button id="fullscreen-btn" class="control-btn">⛶ Fullscreen</button>
+              <button id="save-state-btn" class="control-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Save</button>
+              <button id="load-state-btn" class="control-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg> Load</button>
+              <button id="cloud-save-btn" class="control-btn" title="Cloud Save"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg> Cloud</button>
+              <button id="cheats-btn" class="cheats-btn" title="Cheat Codes"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg> Cheats</button>
+              <button id="info-panel-btn" class="control-btn" title="Game Info"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg> Info</button>
+              <button id="fullscreen-btn" class="control-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg> Fullscreen</button>
             </div>
           </div>
           <div id="emulator-container" class="emulator-container">
@@ -124,7 +336,14 @@
           </div>
           <div class="footer-bottom">
             <div class="footer-brand">
-              <span>&#127918;</span>
+              <svg class="footer-logo-icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                <rect x="2" y="6" width="20" height="12" rx="2"/>
+                <circle cx="7" cy="12" r="2"/>
+                <circle cx="17" cy="10" r="1.5"/>
+                <circle cx="17" cy="14" r="1.5"/>
+                <circle cx="15" cy="12" r="1.5"/>
+                <circle cx="19" cy="12" r="1.5"/>
+              </svg>
               <span>PixelVault</span>
             </div>
             <p class="footer-legal">Only play games you legally own. PixelVault does not host or distribute ROMs.</p>

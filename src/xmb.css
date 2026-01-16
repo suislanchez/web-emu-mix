@@ -1,0 +1,662 @@
+/* ============================================
+   PS3 XMB (XrossMediaBar) Navigation Mode
+   ============================================ */
+
+/* XMB Container - Full screen overlay */
+.xmb-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 9999;
+  overflow: hidden;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+
+.xmb-container.active {
+  opacity: 1;
+}
+
+/* ============================================
+   WAVE BACKGROUND ANIMATION
+   ============================================ */
+.xmb-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--bg-primary);
+  overflow: hidden;
+}
+
+/* Multiple wave layers for depth */
+.xmb-wave {
+  position: absolute;
+  width: 200%;
+  height: 100%;
+  left: -50%;
+  opacity: 0.6;
+}
+
+.xmb-wave-1 {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--accent-primary) 20%,
+    var(--accent-secondary) 40%,
+    transparent 60%,
+    var(--accent-primary) 80%,
+    transparent 100%
+  );
+  animation: wave-flow 20s linear infinite;
+  filter: blur(60px);
+  transform: skewY(-5deg) translateY(20%);
+}
+
+.xmb-wave-2 {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--accent-secondary) 25%,
+    var(--accent-primary) 50%,
+    transparent 75%,
+    var(--accent-secondary) 100%
+  );
+  animation: wave-flow 15s linear infinite reverse;
+  filter: blur(80px);
+  opacity: 0.4;
+  transform: skewY(3deg) translateY(40%);
+}
+
+.xmb-wave-3 {
+  background: linear-gradient(
+    90deg,
+    var(--accent-primary) 0%,
+    transparent 30%,
+    var(--accent-secondary) 60%,
+    transparent 100%
+  );
+  animation: wave-flow 25s linear infinite;
+  filter: blur(100px);
+  opacity: 0.3;
+  transform: skewY(-2deg) translateY(60%);
+}
+
+@keyframes wave-flow {
+  0% {
+    transform: translateX(0) skewY(-5deg);
+  }
+  100% {
+    transform: translateX(50%) skewY(-5deg);
+  }
+}
+
+/* Gradient overlay for depth */
+.xmb-gradient-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background:
+    radial-gradient(ellipse at 50% 0%, transparent 0%, var(--bg-primary) 70%),
+    linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.5) 100%);
+  pointer-events: none;
+}
+
+/* ============================================
+   MAIN XMB CONTENT AREA
+   ============================================ */
+.xmb-content {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 2rem;
+  z-index: 1;
+}
+
+/* ============================================
+   HORIZONTAL CATEGORY BAR
+   ============================================ */
+.xmb-categories {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3rem;
+  padding: 1rem 0;
+  margin-bottom: 1rem;
+}
+
+.xmb-category {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  opacity: 0.5;
+  transform: scale(0.85);
+}
+
+.xmb-category.active {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.xmb-category:hover {
+  opacity: 0.8;
+}
+
+.xmb-category-icon {
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.15) 0%,
+    rgba(255, 255, 255, 0.05) 50%,
+    rgba(0, 0, 0, 0.1) 100%
+  );
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow:
+    0 4px 20px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
+}
+
+.xmb-category.active .xmb-category-icon {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.25) 0%,
+    rgba(255, 255, 255, 0.1) 50%,
+    rgba(0, 0, 0, 0.05) 100%
+  );
+  border-color: var(--accent-primary);
+  box-shadow:
+    0 4px 30px rgba(0, 0, 0, 0.4),
+    0 0 20px var(--accent-glow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.xmb-category-icon svg {
+  width: 32px;
+  height: 32px;
+  color: var(--text-primary);
+  transition: all 0.3s ease;
+}
+
+.xmb-category.active .xmb-category-icon svg {
+  color: var(--accent-primary);
+  filter: drop-shadow(0 0 8px var(--accent-glow));
+}
+
+.xmb-category-label {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+}
+
+.xmb-category.active .xmb-category-label {
+  color: var(--text-primary);
+}
+
+/* ============================================
+   VERTICAL ITEMS LIST
+   ============================================ */
+.xmb-items-container {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  overflow: hidden;
+  padding-top: 1rem;
+}
+
+.xmb-items {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  width: 100%;
+  max-width: 600px;
+}
+
+.xmb-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 1.5rem;
+  width: 100%;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-radius: 8px;
+  opacity: 0.6;
+  transform: scale(0.95);
+}
+
+.xmb-item.active {
+  opacity: 1;
+  transform: scale(1);
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.1) 0%,
+    rgba(255, 255, 255, 0.05) 50%,
+    transparent 100%
+  );
+  border-left: 3px solid var(--accent-primary);
+  box-shadow: 0 2px 20px rgba(0, 0, 0, 0.2);
+}
+
+.xmb-item:hover:not(.active) {
+  opacity: 0.8;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.xmb-item-icon {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-card);
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.xmb-item-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 6px;
+}
+
+.xmb-item-icon svg {
+  width: 24px;
+  height: 24px;
+  color: var(--text-secondary);
+}
+
+.xmb-item.active .xmb-item-icon {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 10px var(--accent-glow);
+}
+
+.xmb-item.active .xmb-item-icon svg {
+  color: var(--accent-primary);
+}
+
+.xmb-item-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.xmb-item-title {
+  font-size: 1rem;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 0.25rem;
+}
+
+.xmb-item-subtitle {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.xmb-item.active .xmb-item-title {
+  color: var(--accent-primary);
+  text-shadow: 0 0 10px var(--accent-glow);
+}
+
+/* ============================================
+   BOTTOM INFO PANEL
+   ============================================ */
+.xmb-info-panel {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 1.5rem 2rem;
+  background: linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.8) 0%,
+    transparent 100%
+  );
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.xmb-info-left {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.xmb-info-title {
+  font-size: 1.25rem;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.xmb-info-description {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  max-width: 400px;
+}
+
+.xmb-info-right {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.xmb-control-hint {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.xmb-control-key {
+  padding: 0.25rem 0.5rem;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 0.7rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* ============================================
+   CLOCK DISPLAY (PS3 style)
+   ============================================ */
+.xmb-clock {
+  position: absolute;
+  top: 1.5rem;
+  right: 2rem;
+  text-align: right;
+}
+
+.xmb-clock-time {
+  font-size: 1.5rem;
+  color: var(--text-primary);
+  font-weight: 300;
+  letter-spacing: 2px;
+}
+
+.xmb-clock-date {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-top: 0.25rem;
+}
+
+/* ============================================
+   EXIT BUTTON
+   ============================================ */
+.xmb-exit-btn {
+  position: absolute;
+  top: 1.5rem;
+  left: 2rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.8rem;
+}
+
+.xmb-exit-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: var(--text-primary);
+  border-color: var(--accent-primary);
+}
+
+.xmb-exit-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* ============================================
+   SELECTION GLOW EFFECT
+   ============================================ */
+.xmb-glow {
+  position: absolute;
+  width: 200px;
+  height: 200px;
+  background: radial-gradient(
+    circle,
+    var(--accent-glow) 0%,
+    transparent 70%
+  );
+  pointer-events: none;
+  transition: all 0.3s ease;
+  opacity: 0.5;
+  z-index: 0;
+}
+
+/* ============================================
+   RESPONSIVE DESIGN
+   ============================================ */
+@media (max-width: 768px) {
+  .xmb-categories {
+    gap: 1.5rem;
+  }
+
+  .xmb-category-icon {
+    width: 48px;
+    height: 48px;
+  }
+
+  .xmb-category-icon svg {
+    width: 24px;
+    height: 24px;
+  }
+
+  .xmb-category-label {
+    font-size: 0.6rem;
+  }
+
+  .xmb-item {
+    padding: 0.5rem 1rem;
+  }
+
+  .xmb-item-icon {
+    width: 40px;
+    height: 40px;
+  }
+
+  .xmb-item-title {
+    font-size: 0.9rem;
+  }
+
+  .xmb-info-panel {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .xmb-info-right {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .xmb-clock {
+    top: 1rem;
+    right: 1rem;
+  }
+
+  .xmb-clock-time {
+    font-size: 1.1rem;
+  }
+
+  .xmb-exit-btn {
+    top: 1rem;
+    left: 1rem;
+    padding: 0.4rem 0.8rem;
+    font-size: 0.7rem;
+  }
+}
+
+/* ============================================
+   ANIMATION CLASSES
+   ============================================ */
+.xmb-fade-in {
+  animation: xmb-fade-in 0.3s ease forwards;
+}
+
+.xmb-fade-out {
+  animation: xmb-fade-out 0.3s ease forwards;
+}
+
+@keyframes xmb-fade-in {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes xmb-fade-out {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+}
+
+/* Category slide animation */
+.xmb-slide-left {
+  animation: xmb-slide-left 0.3s ease forwards;
+}
+
+.xmb-slide-right {
+  animation: xmb-slide-right 0.3s ease forwards;
+}
+
+@keyframes xmb-slide-left {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes xmb-slide-right {
+  from {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Item selection pulse */
+.xmb-item.active {
+  animation: xmb-pulse 2s ease-in-out infinite;
+}
+
+@keyframes xmb-pulse {
+  0%, 100% {
+    box-shadow: 0 2px 20px rgba(0, 0, 0, 0.2);
+  }
+  50% {
+    box-shadow: 0 2px 30px var(--accent-glow);
+  }
+}
+
+/* ============================================
+   GLOSSY REFLECTION EFFECT
+   ============================================ */
+.xmb-glossy {
+  position: relative;
+  overflow: hidden;
+}
+
+.xmb-glossy::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.1),
+    transparent
+  );
+  animation: glossy-shine 3s ease-in-out infinite;
+}
+
+@keyframes glossy-shine {
+  0%, 100% {
+    left: -100%;
+  }
+  50% {
+    left: 100%;
+  }
+}
+
+/* ============================================
+   GAME COVER STYLES IN XMB
+   ============================================ */
+.xmb-item-cover {
+  width: 48px;
+  height: 64px;
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+.xmb-item-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* System icon colors */
+.xmb-item[data-system="nes"] .xmb-item-icon { border-color: #e60012; }
+.xmb-item[data-system="snes"] .xmb-item-icon { border-color: #7b5aa6; }
+.xmb-item[data-system="gb"] .xmb-item-icon { border-color: #8b956d; }
+.xmb-item[data-system="gbc"] .xmb-item-icon { border-color: #4ecdc4; }
+.xmb-item[data-system="gba"] .xmb-item-icon { border-color: #5a5eb9; }
+.xmb-item[data-system="nds"] .xmb-item-icon { border-color: #b4b4b4; }
+.xmb-item[data-system="n64"] .xmb-item-icon { border-color: #339947; }
+.xmb-item[data-system="segaMD"] .xmb-item-icon { border-color: #17569b; }
+.xmb-item[data-system="segaMS"] .xmb-item-icon { border-color: #d32f2f; }
+.xmb-item[data-system="segaGG"] .xmb-item-icon { border-color: #1976d2; }
+.xmb-item[data-system="psx"] .xmb-item-icon { border-color: #003087; }
+.xmb-item[data-system="arcade"] .xmb-item-icon { border-color: #ff9800; }

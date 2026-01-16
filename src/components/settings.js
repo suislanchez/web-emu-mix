@@ -1,4 +1,4 @@
-import { themes, loadSettings, saveSettings, applyTheme } from '../lib/themes.js'
+import { themes, layouts, loadSettings, saveSettings, applyTheme, applyLayout } from '../lib/themes.js'
 
 let currentSettings = loadSettings()
 
@@ -17,19 +17,24 @@ export function renderSettingsModal() {
           <h2>Settings</h2>
           <nav class="settings-nav">
             <button class="settings-nav-btn active" data-section="appearance">
-              <span class="nav-icon">🎨</span> Appearance
+              <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a7 7 0 0 0 0 14 4 4 0 0 1 0 8 10 10 0 1 0 0-20z" fill="currentColor" opacity="0.3"/></svg>
+              Appearance
             </button>
             <button class="settings-nav-btn" data-section="emulation">
-              <span class="nav-icon">🎮</span> Emulation
+              <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="8" cy="12" r="2"/><path d="M15 10h2m-1-1v2m3 1h2m-1-1v2"/></svg>
+              Emulation
             </button>
             <button class="settings-nav-btn" data-section="audio">
-              <span class="nav-icon">🔊</span> Audio
+              <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07m2.83-9.9a9 9 0 0 1 0 12.73"/></svg>
+              Audio
             </button>
             <button class="settings-nav-btn" data-section="controls">
-              <span class="nav-icon">⌨️</span> Controls
+              <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 8h.01M10 8h.01M14 8h4M6 12h4m4 0h.01m3.99 0h.01M6 16h.01M10 16h8"/></svg>
+              Controls
             </button>
             <button class="settings-nav-btn" data-section="data">
-              <span class="nav-icon">💾</span> Data
+              <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8m10-18v4H7V3"/></svg>
+              Data
             </button>
           </nav>
         </div>
@@ -39,6 +44,35 @@ export function renderSettingsModal() {
             <h3>Appearance</h3>
 
             <div class="setting-group">
+              <label class="setting-label">Layout Style</label>
+              <p class="setting-description">Choose a console-inspired interface layout</p>
+              <div class="layout-grid" id="layout-grid">
+                ${Object.values(layouts).map(layout => `
+                  <button class="layout-option ${currentSettings.layout === layout.id ? 'selected' : ''}"
+                          data-layout="${layout.id}">
+                    <span class="layout-icon">${layout.icon}</span>
+                    <span class="layout-name">${layout.name}</span>
+                    <span class="layout-desc">${layout.description}</span>
+                  </button>
+                `).join('')}
+              </div>
+            </div>
+
+            <div class="setting-group">
+              <label class="setting-label">XMB Navigation Mode</label>
+              <div class="setting-row">
+                <div class="setting-info">
+                  <span>PS3 XMB Mode</span>
+                  <span class="setting-hint">PlayStation 3-style horizontal navigation with wave background</span>
+                </div>
+                <label class="toggle">
+                  <input type="checkbox" id="setting-xmb-mode" ${currentSettings.xmbMode ? 'checked' : ''}>
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+            </div>
+
+            <div class="setting-group">
               <label class="setting-label">Theme</label>
               <p class="setting-description">Choose your preferred color theme</p>
               <div class="theme-grid" id="theme-grid">
@@ -46,7 +80,7 @@ export function renderSettingsModal() {
                   <button class="theme-option ${currentSettings.theme === theme.id ? 'selected' : ''}"
                           data-theme="${theme.id}"
                           style="--preview-bg: ${theme.colors['--bg-primary']}; --preview-accent: ${theme.colors['--accent-primary']}">
-                    <span class="theme-icon">${theme.icon}</span>
+                    <span class="theme-swatch" style="background: ${theme.colors['--accent-primary']}"></span>
                     <span class="theme-name">${theme.name}</span>
                     <span class="theme-preview"></span>
                   </button>
@@ -214,10 +248,12 @@ export function renderSettingsModal() {
 
               <div class="data-actions">
                 <button class="btn btn-outline" id="export-data">
-                  <span>📤</span> Export Data
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                  Export Data
                 </button>
                 <button class="btn btn-outline" id="import-data">
-                  <span>📥</span> Import Data
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  Import Data
                 </button>
                 <input type="file" id="import-file" accept=".json" hidden>
               </div>
@@ -253,6 +289,12 @@ export function renderSettingsModal() {
   `
 
   document.body.appendChild(modal)
+
+  // Trigger reflow and add show class for animation
+  requestAnimationFrame(() => {
+    modal.classList.add('show')
+  })
+
   setupSettingsEvents()
   loadDataStats()
 }
@@ -274,6 +316,18 @@ function setupSettingsEvents() {
     })
   })
 
+  // Layout selection
+  document.querySelectorAll('.layout-option').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.layout-option').forEach(b => b.classList.remove('selected'))
+      btn.classList.add('selected')
+      const layoutId = btn.dataset.layout
+      currentSettings.layout = layoutId
+      saveSettings(currentSettings)
+      applyLayout(layoutId)
+    })
+  })
+
   // Theme selection
   document.querySelectorAll('.theme-option').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -292,6 +346,20 @@ function setupSettingsEvents() {
   setupToggle('setting-fps', 'showFPS')
   setupToggle('setting-autosave', 'autoSave')
   setupToggle('setting-audio', 'audioEnabled')
+
+  // XMB Mode toggle with special handling
+  const xmbToggle = document.getElementById('setting-xmb-mode')
+  if (xmbToggle) {
+    xmbToggle.addEventListener('change', (e) => {
+      currentSettings.xmbMode = e.target.checked
+      saveSettings(currentSettings)
+      // Dispatch event for main.js to handle XMB activation
+      window.dispatchEvent(new CustomEvent('xmb-mode-changed', { detail: { enabled: e.target.checked } }))
+      if (e.target.checked) {
+        closeSettingsModal()
+      }
+    })
+  }
 
   // Select settings
   setupSelect('setting-autosave-interval', 'autoSaveInterval', true)

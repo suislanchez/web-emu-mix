@@ -3,7 +3,7 @@ export const themes = {
   cyber: {
     id: 'cyber',
     name: 'Cyber',
-    icon: '💠',
+    icon: null,
     colors: {
       '--bg-primary': '#000000',
       '--bg-secondary': '#080808',
@@ -28,7 +28,7 @@ export const themes = {
   retroPink: {
     id: 'retroPink',
     name: 'Retro Pink',
-    icon: '🌸',
+    icon: null,
     colors: {
       '--bg-primary': '#0a0a0f',
       '--bg-secondary': '#12121a',
@@ -53,7 +53,7 @@ export const themes = {
   matrix: {
     id: 'matrix',
     name: 'Matrix',
-    icon: '🟢',
+    icon: null,
     colors: {
       '--bg-primary': '#000000',
       '--bg-secondary': '#0a0f0a',
@@ -78,7 +78,7 @@ export const themes = {
   synthwave: {
     id: 'synthwave',
     name: 'Synthwave',
-    icon: '🔮',
+    icon: null,
     colors: {
       '--bg-primary': '#0a0812',
       '--bg-secondary': '#12101a',
@@ -103,7 +103,7 @@ export const themes = {
   sunset: {
     id: 'sunset',
     name: 'Sunset',
-    icon: '🌅',
+    icon: null,
     colors: {
       '--bg-primary': '#0f0a0a',
       '--bg-secondary': '#1a1210',
@@ -128,7 +128,7 @@ export const themes = {
   ocean: {
     id: 'ocean',
     name: 'Ocean',
-    icon: '🌊',
+    icon: null,
     colors: {
       '--bg-primary': '#040810',
       '--bg-secondary': '#081018',
@@ -153,7 +153,7 @@ export const themes = {
   midnight: {
     id: 'midnight',
     name: 'Midnight',
-    icon: '🌌',
+    icon: null,
     colors: {
       '--bg-primary': '#0d1117',
       '--bg-secondary': '#161b22',
@@ -178,7 +178,7 @@ export const themes = {
   gold: {
     id: 'gold',
     name: 'Royal Gold',
-    icon: '👑',
+    icon: null,
     colors: {
       '--bg-primary': '#08080a',
       '--bg-secondary': '#101012',
@@ -203,7 +203,7 @@ export const themes = {
   monochrome: {
     id: 'monochrome',
     name: 'Monochrome',
-    icon: '⚪',
+    icon: null,
     colors: {
       '--bg-primary': '#000000',
       '--bg-secondary': '#0a0a0a',
@@ -228,7 +228,7 @@ export const themes = {
   gameboy: {
     id: 'gameboy',
     name: 'Game Boy',
-    icon: '🎮',
+    icon: null,
     colors: {
       '--bg-primary': '#9bbc0f',
       '--bg-secondary': '#8bac0f',
@@ -253,7 +253,7 @@ export const themes = {
   cherry: {
     id: 'cherry',
     name: 'Cherry Blossom',
-    icon: '🌸',
+    icon: null,
     colors: {
       '--bg-primary': '#1a0a10',
       '--bg-secondary': '#200d14',
@@ -278,7 +278,7 @@ export const themes = {
   arctic: {
     id: 'arctic',
     name: 'Arctic',
-    icon: '❄️',
+    icon: null,
     colors: {
       '--bg-primary': '#0a1015',
       '--bg-secondary': '#0f1820',
@@ -302,12 +302,42 @@ export const themes = {
   },
 }
 
+// Layout definitions - console-inspired UI layouts
+export const layouts = {
+  default: {
+    id: 'default',
+    name: 'Default',
+    description: 'Clean modern layout',
+    icon: null
+  },
+  ps1: {
+    id: 'ps1',
+    name: 'PlayStation',
+    description: 'Classic PS1 memory card style',
+    icon: null
+  },
+  wii: {
+    id: 'wii',
+    name: 'Wii Channel',
+    description: 'Nintendo Wii channel grid',
+    icon: null
+  },
+  pc: {
+    id: 'pc',
+    name: 'PC Gaming',
+    description: 'Steam/Epic client style',
+    icon: null
+  }
+}
+
 // Settings storage key
 const SETTINGS_KEY = 'retroplay_settings'
 
 // Default settings
 export const defaultSettings = {
-  theme: 'cyber',
+  theme: 'matrix',
+  layout: 'default',
+  xmbMode: false, // PS3 XMB-style navigation
   audioEnabled: true,
   audioVolume: 80,
   showFPS: false,
@@ -367,8 +397,25 @@ export function getCurrentTheme() {
   return document.body.getAttribute('data-theme') || 'dark'
 }
 
-// Initialize theme from settings
+// Apply layout to document
+export function applyLayout(layoutId) {
+  const layout = layouts[layoutId] || layouts.default
+  document.body.setAttribute('data-layout', layout.id)
+
+  // Remove all layout classes
+  document.body.classList.remove('layout-default', 'layout-ps1', 'layout-wii', 'layout-pc')
+  // Add new layout class
+  document.body.classList.add(`layout-${layout.id}`)
+}
+
+// Get current layout
+export function getCurrentLayout() {
+  return document.body.getAttribute('data-layout') || 'default'
+}
+
+// Initialize theme and layout from settings
 export function initTheme() {
   const settings = loadSettings()
   applyTheme(settings.theme)
+  applyLayout(settings.layout)
 }

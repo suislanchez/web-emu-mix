@@ -1,0 +1,488 @@
+/* ============================================
+   WELCOME SCREEN - Classic Retro Style
+   ============================================ */
+
+.welcome-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 50%, #0d0d12 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+
+.welcome-screen.show {
+  opacity: 1;
+}
+
+.welcome-screen.fade-out {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.welcome-content {
+  position: relative;
+  max-width: 600px;
+  width: 90%;
+  padding: 3rem 2rem;
+  text-align: center;
+}
+
+/* CRT Scanlines Effect */
+.welcome-scanlines {
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.15),
+    rgba(0, 0, 0, 0.15) 1px,
+    transparent 1px,
+    transparent 2px
+  );
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Corner Decorations */
+.welcome-decorations {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+.corner-decoration {
+  position: absolute;
+  width: 80px;
+  height: 80px;
+  border: 2px solid rgba(233, 69, 96, 0.3);
+}
+
+.corner-decoration.top-left {
+  top: 20px;
+  left: 20px;
+  border-right: none;
+  border-bottom: none;
+}
+
+.corner-decoration.top-right {
+  top: 20px;
+  right: 20px;
+  border-left: none;
+  border-bottom: none;
+}
+
+.corner-decoration.bottom-left {
+  bottom: 20px;
+  left: 20px;
+  border-right: none;
+  border-top: none;
+}
+
+.corner-decoration.bottom-right {
+  bottom: 20px;
+  right: 20px;
+  border-left: none;
+  border-top: none;
+}
+
+/* Header */
+.welcome-header {
+  margin-bottom: 2rem;
+}
+
+.welcome-logo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.pixel-controller {
+  animation: float 3s ease-in-out infinite;
+  filter: drop-shadow(0 0 20px rgba(233, 69, 96, 0.5));
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+.welcome-title {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 2.5rem;
+  letter-spacing: 2px;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.title-pixel {
+  color: #e94560;
+  text-shadow:
+    0 0 10px rgba(233, 69, 96, 0.8),
+    0 0 20px rgba(233, 69, 96, 0.6),
+    0 0 30px rgba(233, 69, 96, 0.4);
+}
+
+.title-vault {
+  color: #00d4ff;
+  text-shadow:
+    0 0 10px rgba(0, 212, 255, 0.8),
+    0 0 20px rgba(0, 212, 255, 0.6),
+    0 0 30px rgba(0, 212, 255, 0.4);
+}
+
+.welcome-tagline {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.6);
+  letter-spacing: 4px;
+  margin-top: 0.5rem;
+}
+
+/* Features */
+.welcome-features {
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+  margin: 2rem 0;
+  flex-wrap: wrap;
+}
+
+.feature-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.85rem;
+}
+
+.feature-icon {
+  color: #00d4ff;
+}
+
+/* System Badges */
+.welcome-systems {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin: 1.5rem 0;
+}
+
+.system-badge {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.5rem;
+  padding: 0.4rem 0.6rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  color: rgba(255, 255, 255, 0.6);
+  transition: all 0.2s;
+}
+
+.system-badge:hover {
+  border-color: #e94560;
+  color: #e94560;
+  background: rgba(233, 69, 96, 0.1);
+}
+
+/* Disclaimer */
+.welcome-disclaimer {
+  margin: 2rem 0;
+}
+
+.disclaimer-box {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 1.25rem;
+  text-align: left;
+}
+
+.disclaimer-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #f7931e;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.6rem;
+  margin-bottom: 0.75rem;
+  letter-spacing: 1px;
+}
+
+.disclaimer-box p {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.6;
+  margin: 0 0 0.75rem 0;
+}
+
+.disclaimer-box ul {
+  margin: 0;
+  padding-left: 1.25rem;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.5);
+  line-height: 1.8;
+}
+
+.disclaimer-box li {
+  margin-bottom: 0.25rem;
+}
+
+/* Enter Button */
+.welcome-actions {
+  margin: 2rem 0;
+}
+
+.welcome-enter-btn {
+  position: relative;
+  background: linear-gradient(135deg, #e94560 0%, #ff6b6b 100%);
+  border: none;
+  border-radius: 12px;
+  padding: 1.25rem 3rem;
+  cursor: pointer;
+  overflow: hidden;
+  transition: all 0.3s;
+  box-shadow:
+    0 4px 15px rgba(233, 69, 96, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.welcome-enter-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transform: translateX(-100%);
+  animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.welcome-enter-btn:hover {
+  transform: scale(1.05);
+  box-shadow:
+    0 8px 25px rgba(233, 69, 96, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.welcome-enter-btn:active {
+  transform: scale(0.98);
+}
+
+.welcome-enter-btn .btn-text {
+  display: block;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.9rem;
+  color: white;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  animation: pulse-text 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-text {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.8; }
+}
+
+.welcome-enter-btn .btn-subtext {
+  display: block;
+  font-family: 'VT323', monospace;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.7);
+  margin-top: 0.5rem;
+}
+
+/* Footer */
+.welcome-footer {
+  margin-top: 2rem;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.75rem;
+}
+
+.welcome-footer a {
+  color: #00d4ff;
+  text-decoration: none;
+}
+
+.welcome-footer a:hover {
+  text-decoration: underline;
+}
+
+.welcome-footer .version {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.5rem;
+  margin-top: 0.5rem;
+  color: rgba(255, 255, 255, 0.2);
+}
+
+/* ============================================
+   SIGN UP PROMPT
+   ============================================ */
+
+.signup-prompt {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  z-index: 9999;
+  opacity: 0;
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.signup-prompt.show {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+}
+
+.signup-prompt.fade-out {
+  transform: translateX(-50%) translateY(100px);
+  opacity: 0;
+}
+
+.prompt-content {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: linear-gradient(135deg, #1a1a2e 0%, #0d0d12 100%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 1rem 1.5rem;
+  box-shadow:
+    0 10px 40px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(0, 212, 255, 0.1);
+}
+
+.prompt-icon {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #e94560 0%, #ff6b6b 100%);
+  border-radius: 12px;
+  color: white;
+  flex-shrink: 0;
+}
+
+.prompt-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.prompt-text strong {
+  color: white;
+  font-size: 0.95rem;
+}
+
+.prompt-text span {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.8rem;
+}
+
+.prompt-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-left: 0.5rem;
+}
+
+.prompt-btn {
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+}
+
+.prompt-btn.primary {
+  background: linear-gradient(135deg, #e94560 0%, #ff6b6b 100%);
+  color: white;
+}
+
+.prompt-btn.primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(233, 69, 96, 0.4);
+}
+
+.prompt-btn.secondary {
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.prompt-btn.secondary:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+/* Mobile Styles */
+@media (max-width: 640px) {
+  .welcome-content {
+    padding: 2rem 1.5rem;
+  }
+
+  .welcome-title {
+    font-size: 1.8rem;
+  }
+
+  .welcome-tagline {
+    font-size: 0.55rem;
+    letter-spacing: 2px;
+  }
+
+  .welcome-features {
+    gap: 1rem;
+  }
+
+  .feature-item {
+    font-size: 0.75rem;
+  }
+
+  .welcome-enter-btn {
+    padding: 1rem 2rem;
+  }
+
+  .welcome-enter-btn .btn-text {
+    font-size: 0.7rem;
+  }
+
+  .corner-decoration {
+    width: 40px;
+    height: 40px;
+  }
+
+  /* Prompt mobile */
+  .prompt-content {
+    flex-direction: column;
+    text-align: center;
+    max-width: 90vw;
+  }
+
+  .prompt-actions {
+    margin-left: 0;
+    margin-top: 0.5rem;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .pixel-controller {
+    animation: none;
+  }
+
+  .welcome-enter-btn::before {
+    animation: none;
+  }
+
+  .welcome-enter-btn .btn-text {
+    animation: none;
+  }
+}

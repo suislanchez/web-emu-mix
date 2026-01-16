@@ -462,6 +462,143 @@ export const achievements = {
   }
 }
 
+// User Library (game collection)
+export const library = {
+  async list(userId, filter = null) {
+    if (!supabase) return []
+    let query = supabase
+      .from('user_library')
+      .select(`
+        *,
+        game_catalog (
+          id, title, system_id, region, cover_url, myrient_path, genres
+        )
+      `)
+      .eq('user_id', userId)
+      .order('added_at', { ascending: false })
+
+    if (filter === 'ready') {
+      query = query.or('download_status.eq.completed,storage_type.eq.external')
+    } else if (filter === 'cloud') {
+      query = query.eq('storage_type', 'supabase')
+    } else if (filter === 'external') {
+      query = query.in('storage_type', ['google_drive', 'dropbox', 'external'])
+    }
+
+    const { data, error } = await query
+    if (error) throw error
+    return data || []
+  },
+
+  async get(userId, libraryId) {
+    if (!supabase) return null
+    const { data, error } = await supabase
+      .from('user_library')
+      .select(`
+        *,
+        game_catalog (*)
+      `)
+      .eq('id', libraryId)
+      .eq('user_id', userId)
+      .single()
+    if (error && error.code !== 'PGRST116') throw error
+    return data
+  },
+
+  async add(userId, catalogId, storageType = 'external') {
+    if (!supabase) throw new Error('Offline mode')
+    const { data, error } = await supabase
+      .from('user_library')
+      .upsert({
+        user_id: userId,
+        catalog_id: catalogId,
+        storage_type: storageType,
+        download_status: storageType === 'external' ? 'external' : 'pending',
+        added_at: new Date().toISOString()
+      }, { onConflict: 'user_id,catalog_id,storage_type' })
+      .select()
+      .single()
+    if (error) throw error
+    return data
+  },
+
+  async remove(userId, libraryId) {
+    if (!supabase) throw new Error('Offline mode')
+    // Get the item first to check storage
+    const item = await library.get(userId, libraryId)
+
+    // If stored in Supabase, delete the file
+    if (item?.storage_type === 'supabase' && item?.storage_path) {
+      await supabase.storage.from('user_roms').remove([item.storage_path])
+    }
+
+    const { error } = await supabase
+      .from('user_library')
+      .delete()
+      .eq('id', libraryId)
+      .eq('user_id', userId)
+    if (error) throw error
+
+    // Update quota
+    await supabase.rpc('update_user_storage_quota', { user_id_param: userId })
+  },
+
+  async getStatusBatch(userId, catalogIds) {
+    if (!supabase || !catalogIds.length) return {}
+    const { data, error } = await supabase
+      .from('user_library')
+      .select('catalog_id, download_status, storage_type')
+      .eq('user_id', userId)
+      .in('catalog_id', catalogIds)
+
+    if (error) throw error
+
+    const status = {}
+    for (const item of data || []) {
+      status[item.catalog_id] = item
+    }
+    return status
+  },
+
+  async startDownload(userId, catalogId, myrientPath) {
+    if (!supabase) throw new Error('Offline mode')
+
+    // Call the myrient-proxy edge function
+    const { data, error } = await supabase.functions.invoke('myrient-proxy', {
+      body: { myrientPath, catalogId }
+    })
+
+    if (error) throw error
+    return data
+  },
+
+  async updateLastPlayed(userId, libraryId) {
+    if (!supabase) return
+    await supabase
+      .from('user_library')
+      .update({ last_played_at: new Date().toISOString() })
+      .eq('id', libraryId)
+      .eq('user_id', userId)
+  },
+
+  async getRomBlob(userId, libraryId) {
+    if (!supabase) throw new Error('Offline mode')
+
+    const item = await library.get(userId, libraryId)
+    if (!item) throw new Error('Game not found in library')
+
+    if (item.storage_type === 'supabase' && item.storage_path) {
+      const { data, error } = await supabase.storage
+        .from('user_roms')
+        .download(item.storage_path)
+      if (error) throw error
+      return { blob: data, gameInfo: item }
+    }
+
+    throw new Error('Cannot load ROM from this storage type')
+  }
+}
+
 // Favorites
 export const favorites = {
   async list(userId) {

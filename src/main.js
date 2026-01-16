@@ -1,10 +1,38 @@
 import './style.css'
+import './cheats.css'
+import './welcome.css'
+import './xmb.css'
 import { auth, saves, sessions, achievements } from './lib/supabase.js'
 import { store, loadRecentGames as loadStoredGames, updateRecentGames } from './lib/store.js'
 import { loadUserData, updateHeaderUI, renderAuthModal } from './components/auth.js'
 import { renderGamePanel, closeGamePanel } from './components/gamePanel.js'
 import { fetchCoverArt } from './lib/coverArt.js'
-import { initTheme } from './lib/themes.js'
+import { initTheme, loadSettings, saveSettings } from './lib/themes.js'
+import { renderSettingsModal } from './components/settings.js'
+import { renderAboutModal, renderShortcutsModal } from './components/about.js'
+import { renderCheatsModal, getCheatCount } from './components/cheatsModal.js'
+import { renderWelcomeScreen, hasSeenWelcome } from './components/welcomeScreen.js'
+import { renderXMB, closeXMB, isXMBActive, refreshXMB } from './components/xmbMode.js'
+// New feature imports
+import {
+  getFavorites, toggleFavorite, isFavorite,
+  getCollections, filterGames, getRandomGame,
+  saveScreenshot, updatePlayStats, formatPlaytime,
+  getPlayStats
+} from './lib/library.js'
+import { renderStatsModal } from './components/statsModal.js'
+import { renderScreenshotGallery } from './components/screenshotGallery.js'
+import { renderCollectionsModal } from './components/collectionsModal.js'
+import { renderLeaderboardsModal } from './components/leaderboardsModal.js'
+import { renderGameBrowser, closeBrowser as closeGameBrowser } from './components/gameBrowser.js'
+import { renderLibraryManager, closeLibraryManager } from './components/libraryManager.js'
+import { handleOAuthCallbackPage } from './components/storageSettings.js'
+import {
+  applyShader, SHADERS,
+  startRewindCapture, stopRewindCapture, rewind, clearRewindStates,
+  setEmulatorSpeed, toggleFastForward,
+  applyAllCheats, captureScreenshot
+} from './lib/emulatorEnhancements.js'
 
 // Initialize theme immediately
 initTheme()
@@ -86,6 +114,15 @@ let currentGame = null
 let currentSession = null
 let sessionStartTime = null
 
+// Filter state
+let currentFilters = {
+  search: '',
+  system: 'all',
+  sortBy: 'recent',
+  favoritesOnly: false,
+  collectionId: null
+}
+
 // DOM Elements
 const systemGrid = document.getElementById('system-grid')
 const uploadArea = document.getElementById('upload-area')
@@ -103,14 +140,33 @@ const cloudSaveBtn = document.getElementById('cloud-save-btn')
 const infoPanelBtn = document.getElementById('info-panel-btn')
 const fullscreenBtn = document.getElementById('fullscreen-btn')
 
+// Library toolbar elements
+const searchInput = document.getElementById('search-input')
+const systemFilter = document.getElementById('system-filter')
+const sortSelect = document.getElementById('sort-select')
+const favoritesFilterBtn = document.getElementById('favorites-filter')
+const randomBtn = document.getElementById('random-btn')
+const statsBtn = document.getElementById('stats-btn')
+const leaderboardsBtn = document.getElementById('leaderboards-btn')
+const galleryBtn = document.getElementById('gallery-btn')
+const collectionsBtn = document.getElementById('collections-btn')
+
 // Initialize app
 async function init() {
+  // Handle OAuth callback for external storage
+  if (window.location.pathname === '/oauth/callback' || window.location.search.includes('code=')) {
+    handleOAuthCallbackPage()
+    return
+  }
+
   loadStoredGames()
   recentGames = store.getState().recentGames || []
 
   renderSystems()
+  populateSystemFilter()
   renderRecentGames()
   setupEventListeners()
+  setupLibraryToolbar()
 
   // Initialize auth
   try {
@@ -126,13 +182,22 @@ async function init() {
       if (event === 'SIGNED_IN') {
         await loadUserData()
         updateHeaderUI()
+        // Refresh XMB if active to update user items
+        refreshXMB()
       } else if (event === 'SIGNED_OUT') {
         store.setState({ user: null, profile: null })
         updateHeaderUI()
+        refreshXMB()
       }
     })
   } catch (e) {
     console.log('Auth listener not available')
+  }
+
+  // Check if XMB mode is enabled on startup
+  const settings = loadSettings()
+  if (settings.xmbMode) {
+    renderXMB(handleXMBGameSelect)
   }
 }
 
@@ -142,8 +207,12 @@ function handleLogoError(img, systemId) {
   const svgFallback = SYSTEM_SVG_ICONS[systemId]
   const color = SYSTEM_COLORS[systemId]
 
-  // If we haven't tried backup yet, try it
-  if (img.src !== backup && backup) {
+  // Track which fallback stage we're at
+  const stage = img.dataset.fallbackStage || '0'
+
+  if (stage === '0' && backup) {
+    // Try backup URL
+    img.dataset.fallbackStage = '1'
     img.src = backup
   } else {
     // All image sources failed, use SVG fallback
@@ -152,15 +221,15 @@ function handleLogoError(img, systemId) {
   }
 }
 
-// Render system cards
+// Render system cards - try actual logos first, fallback to SVG icons
 function renderSystems() {
   systemGrid.innerHTML = SYSTEMS.map(system => `
     <div class="system-card" data-system="${system.id}" style="--system-color: ${SYSTEM_COLORS[system.id]}">
-      <div class="system-logo">
+      <div class="system-logo" data-system="${system.id}">
         <img
           src="${SYSTEM_LOGOS[system.id]}"
           alt="${system.name}"
-          loading="lazy"
+          class="system-logo-img"
           onerror="handleLogoError(this, '${system.id}')"
         />
       </div>
@@ -172,7 +241,7 @@ function renderSystems() {
   `).join('')
 }
 
-// Make handleLogoError available globally for inline onerror
+// Make handleLogoError available globally for inline onerror handlers
 window.handleLogoError = handleLogoError
 
 // Setup event listeners
@@ -254,6 +323,18 @@ function setupEventListeners() {
     })
   }
 
+  // Cheats button
+  const cheatsBtn = document.getElementById('cheats-btn')
+  if (cheatsBtn) {
+    cheatsBtn.addEventListener('click', () => {
+      if (currentGame) {
+        renderCheatsModal(currentGame.gameId, currentGame.systemId, currentGame.name)
+      } else {
+        showToast('Start a game first', 'error')
+      }
+    })
+  }
+
   fullscreenBtn.addEventListener('click', () => {
     const container = document.getElementById('emulator-container')
     if (container.requestFullscreen) container.requestFullscreen()
@@ -263,9 +344,127 @@ function setupEventListeners() {
   gamesGrid.addEventListener('click', (e) => {
     const playBtn = e.target.closest('.play-btn')
     const deleteBtn = e.target.closest('.delete-btn')
+    const favoriteBtn = e.target.closest('.favorite-btn')
     const card = e.target.closest('.game-card')
+
+    if (favoriteBtn) {
+      e.stopPropagation()
+      const gameId = favoriteBtn.dataset.gameId
+      const added = toggleFavorite(gameId)
+      favoriteBtn.classList.toggle('active', added)
+      const svg = favoriteBtn.querySelector('svg')
+      if (svg) svg.setAttribute('fill', added ? 'currentColor' : 'none')
+      favoriteBtn.title = added ? 'Remove from favorites' : 'Add to favorites'
+      showToast(added ? 'Added to favorites' : 'Removed from favorites', 'success')
+      return
+    }
+
     if (deleteBtn && card) { e.stopPropagation(); deleteGame(parseInt(card.dataset.index)) }
     else if ((playBtn || card) && card) playRecentGame(parseInt(card.dataset.index))
+  })
+
+  // Header navigation buttons
+  const settingsBtn = document.getElementById('settings-btn')
+  const shortcutsBtn = document.getElementById('shortcuts-btn')
+  const aboutBtn = document.getElementById('about-btn')
+
+  if (settingsBtn) settingsBtn.addEventListener('click', renderSettingsModal)
+  if (shortcutsBtn) shortcutsBtn.addEventListener('click', renderShortcutsModal)
+  if (aboutBtn) aboutBtn.addEventListener('click', renderAboutModal)
+
+  // Footer links
+  const footerSettings = document.getElementById('footer-settings')
+  const footerShortcuts = document.getElementById('footer-shortcuts')
+  const footerAbout = document.getElementById('footer-about')
+
+  if (footerSettings) footerSettings.addEventListener('click', renderSettingsModal)
+  if (footerShortcuts) footerShortcuts.addEventListener('click', renderShortcutsModal)
+  if (footerAbout) footerAbout.addEventListener('click', renderAboutModal)
+
+  // Mobile Navigation Drawer
+  setupMobileDrawer()
+
+  // Browse Games and My Library buttons
+  const browseGamesBtn = document.getElementById('browse-games-btn')
+  const myLibraryBtn = document.getElementById('my-library-btn')
+
+  if (browseGamesBtn) browseGamesBtn.addEventListener('click', renderGameBrowser)
+  if (myLibraryBtn) myLibraryBtn.addEventListener('click', renderLibraryManager)
+
+  // Setup Discovery Section
+  setupDiscoverySection()
+
+  // Global keyboard shortcuts
+  document.addEventListener('keydown', (e) => {
+    // Ctrl+, for settings
+    if (e.ctrlKey && e.key === ',') {
+      e.preventDefault()
+      renderSettingsModal()
+    }
+    // ? for shortcuts help
+    if (e.key === '?' && !e.target.matches('input, textarea')) {
+      renderShortcutsModal()
+    }
+    // Escape to close modals
+    if (e.key === 'Escape') {
+      document.getElementById('settings-modal')?.remove()
+      document.getElementById('shortcuts-modal')?.remove()
+      document.getElementById('about-modal')?.remove()
+      document.getElementById('stats-modal')?.remove()
+      document.getElementById('gallery-modal')?.remove()
+      document.getElementById('collections-modal')?.remove()
+      document.getElementById('leaderboards-modal')?.remove()
+    }
+    // F12 for screenshot (during gameplay)
+    if (e.key === 'F12' && currentGame && window.EJS_emulator) {
+      e.preventDefault()
+      const screenshot = captureScreenshot(currentGame.gameId, currentGame.name)
+      if (screenshot) {
+        saveScreenshot(currentGame.gameId, currentGame.name, screenshot.dataUrl)
+        showToast('Screenshot saved!', 'success')
+      }
+    }
+    // R for rewind (during gameplay)
+    if (e.key === 'r' && !e.target.matches('input, textarea') && currentGame) {
+      if (rewind(1)) {
+        showToast('Rewound 1 second', 'info')
+      }
+    }
+    // F for fast forward toggle (during gameplay)
+    if (e.key === 'f' && !e.target.matches('input, textarea') && currentGame) {
+      toggleFastForward()
+    }
+  })
+
+  // XMB Mode event listeners
+  window.addEventListener('xmb-mode-changed', (e) => {
+    if (e.detail.enabled) {
+      renderXMB(handleXMBGameSelect)
+    } else {
+      closeXMB()
+    }
+  })
+
+  // Handle system selection from XMB
+  window.addEventListener('xmb-select-system', (e) => {
+    const systemId = e.detail.systemId
+    selectSystem(systemId)
+    romInput.click()
+  })
+}
+
+// Handle game selection from XMB
+function handleXMBGameSelect(game) {
+  if (!game) return
+  selectSystem(game.systemId)
+  getGameFile(game.fileName).then(file => {
+    if (file) {
+      game.timestamp = Date.now()
+      updateRecentGames(recentGames)
+      launchEmulator(URL.createObjectURL(file), game)
+    } else {
+      showToast('Game file not found. Please upload again.', 'error')
+    }
   })
 }
 
@@ -301,7 +500,7 @@ function handleFile(file) {
   const gameInfo = {
     gameId, name: gameName, fileName: file.name,
     systemId: selectedSystem.id, systemName: selectedSystem.name,
-    icon: SYSTEM_ICONS[selectedSystem.id], timestamp: Date.now(),
+    icon: SYSTEM_SVG_ICONS[selectedSystem.id], timestamp: Date.now(),
   }
 
   saveGameToRecent(gameInfo, file)
@@ -341,15 +540,38 @@ async function launchEmulator(romUrl, gameInfo) {
 
   const script = document.createElement('script')
   script.src = 'https://cdn.emulatorjs.org/stable/data/loader.js'
-  script.onload = () => hideLoading()
+  script.onload = () => {
+    hideLoading()
+    // Start rewind capture for this game
+    startRewindCapture()
+    // Apply any saved cheats
+    setTimeout(() => applyAllCheats(gameInfo.gameId), 1000)
+  }
   script.onerror = () => { hideLoading(); showToast('Failed to load emulator', 'error'); showLibrary() }
   document.body.appendChild(script)
 }
 
 async function endSession() {
-  if (!currentSession || !sessionStartTime) return
+  // Always update local play stats
+  if (currentGame && sessionStartTime) {
+    const playtimeSeconds = Math.floor((Date.now() - sessionStartTime) / 1000)
+    if (playtimeSeconds > 0) {
+      updatePlayStats(currentGame.gameId, currentGame.systemId, playtimeSeconds)
+    }
+  }
+
+  // Update cloud session if logged in
+  if (!currentSession || !sessionStartTime) {
+    currentSession = null
+    sessionStartTime = null
+    return
+  }
   const { user } = store.getState()
-  if (!user) return
+  if (!user) {
+    currentSession = null
+    sessionStartTime = null
+    return
+  }
 
   const playtimeSeconds = Math.floor((Date.now() - sessionStartTime) / 1000)
   try {
@@ -363,6 +585,9 @@ async function endSession() {
 }
 
 function stopEmulator() {
+  // Stop rewind capture and clear states
+  stopRewindCapture()
+  clearRewindStates()
   if (window.EJS_emulator) try { window.EJS_emulator.pause() } catch (e) {}
   document.getElementById('game').innerHTML = ''
   document.querySelectorAll('script[src*="emulatorjs"]').forEach(el => el.remove())
@@ -376,6 +601,13 @@ function showLibrary() {
   libraryView.style.display = 'block'
   closeGamePanel()
   renderRecentGames()
+
+  // If XMB mode is enabled, show XMB instead
+  const settings = loadSettings()
+  if (settings.xmbMode) {
+    libraryView.style.display = 'none'
+    renderXMB(handleXMBGameSelect)
+  }
 }
 
 async function saveGameToRecent(gameInfo, file) {
@@ -385,6 +617,9 @@ async function saveGameToRecent(gameInfo, file) {
   recentGames = recentGames.slice(0, 20)
   updateRecentGames(recentGames)
 
+  // Refresh XMB if active
+  refreshXMB()
+
   // Fetch cover art in the background
   fetchCoverArt(gameInfo.name, gameInfo.systemId).then(coverUrl => {
     if (coverUrl) {
@@ -393,6 +628,7 @@ async function saveGameToRecent(gameInfo, file) {
         game.coverUrl = coverUrl
         updateRecentGames(recentGames)
         renderRecentGames()
+        refreshXMB()
       }
     }
   }).catch(() => {})
@@ -403,8 +639,15 @@ function renderRecentGames() {
   if (recentGames.length === 0) { recentGamesSection.style.display = 'none'; return }
 
   recentGamesSection.style.display = 'block'
-  gamesGrid.innerHTML = recentGames.map((game, index) => `
-    <div class="game-card ${game.coverUrl ? 'has-cover' : ''}" data-index="${index}" style="--system-color: ${SYSTEM_COLORS[game.systemId] || '#666'}">
+  gamesGrid.innerHTML = recentGames.map((game, index) => {
+    const favorited = isFavorite(game.gameId)
+    return `
+    <div class="game-card ${game.coverUrl ? 'has-cover' : ''}" data-index="${index}" data-game-id="${game.gameId}" style="--system-color: ${SYSTEM_COLORS[game.systemId] || '#666'}">
+      <button class="favorite-btn ${favorited ? 'active' : ''}" data-game-id="${game.gameId}" title="${favorited ? 'Remove from favorites' : 'Add to favorites'}">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="${favorited ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2">
+          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+        </svg>
+      </button>
       ${game.coverUrl ? `
         <div class="game-card-cover">
           <img
@@ -417,11 +660,11 @@ function renderRecentGames() {
         </div>
       ` : `
         <div class="game-card-header">
-          <div class="game-card-logo">
+          <div class="game-card-logo" data-system="${game.systemId}">
             <img
               src="${SYSTEM_LOGOS[game.systemId]}"
               alt="${game.systemName}"
-              loading="lazy"
+              class="game-logo-img"
               onerror="handleLogoError(this, '${game.systemId}')"
             />
           </div>
@@ -432,11 +675,11 @@ function renderRecentGames() {
         <div class="game-card-title">${game.name}</div>
       </div>
       <div class="game-card-actions">
-        <button class="play-btn">▶ Play</button>
+        <button class="play-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg> Play</button>
         <button class="delete-btn">Remove</button>
       </div>
     </div>
-  `).join('')
+  `}).join('')
 
   // Fetch missing cover art for games without it
   recentGames.forEach((game, index) => {
@@ -488,6 +731,7 @@ function deleteGame(index) {
   recentGames.splice(index, 1)
   updateRecentGames(recentGames)
   renderRecentGames()
+  refreshXMB()
   showToast('Game removed', 'success')
 }
 
@@ -554,5 +798,509 @@ function showToast(message, type = 'info') {
 
 function isMobile() { return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) }
 
-// Initialize
-init()
+// Mobile Navigation Drawer
+function setupMobileDrawer() {
+  const hamburgerBtn = document.getElementById('hamburger-btn')
+  const drawer = document.getElementById('mobile-nav-drawer')
+  const overlay = document.getElementById('mobile-nav-overlay')
+  const closeBtn = document.getElementById('drawer-close-btn')
+
+  if (!hamburgerBtn || !drawer || !overlay) return
+
+  function openDrawer() {
+    drawer.classList.add('open')
+    overlay.classList.add('visible')
+    hamburgerBtn.classList.add('active')
+    document.body.classList.add('drawer-open')
+    updateDrawerUserSection()
+  }
+
+  function closeDrawer() {
+    drawer.classList.remove('open')
+    overlay.classList.remove('visible')
+    hamburgerBtn.classList.remove('active')
+    document.body.classList.remove('drawer-open')
+  }
+
+  function toggleDrawer() {
+    if (drawer.classList.contains('open')) {
+      closeDrawer()
+    } else {
+      openDrawer()
+    }
+  }
+
+  // Update user section in drawer
+  function updateDrawerUserSection() {
+    const userSection = document.getElementById('drawer-user-section')
+    if (!userSection) return
+
+    const { user } = store.getState()
+    if (user) {
+      const initial = (user.email || user.user_metadata?.full_name || 'U')[0].toUpperCase()
+      const name = user.user_metadata?.full_name || user.email?.split('@')[0] || 'User'
+      userSection.innerHTML = `
+        <div class="drawer-user-info">
+          <div class="drawer-avatar">${initial}</div>
+          <div class="drawer-user-details">
+            <div class="drawer-user-name">${name}</div>
+            <div class="drawer-user-email">${user.email || ''}</div>
+          </div>
+        </div>
+      `
+    } else {
+      userSection.innerHTML = `
+        <button class="drawer-sign-in-btn" id="drawer-sign-in">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+            <polyline points="10 17 15 12 10 7"/>
+            <line x1="15" y1="12" x2="3" y2="12"/>
+          </svg>
+          Sign In
+        </button>
+      `
+      const signInBtn = document.getElementById('drawer-sign-in')
+      if (signInBtn) {
+        signInBtn.addEventListener('click', () => {
+          closeDrawer()
+          renderAuthModal('login')
+        })
+      }
+    }
+  }
+
+  // Event listeners
+  hamburgerBtn.addEventListener('click', toggleDrawer)
+  if (closeBtn) closeBtn.addEventListener('click', closeDrawer)
+  overlay.addEventListener('click', closeDrawer)
+
+  // Drawer navigation items
+  const drawerHome = document.getElementById('drawer-home')
+  const drawerBrowse = document.getElementById('drawer-browse')
+  const drawerSettings = document.getElementById('drawer-settings')
+  const drawerShortcuts = document.getElementById('drawer-shortcuts')
+  const drawerAbout = document.getElementById('drawer-about')
+
+  if (drawerHome) {
+    drawerHome.addEventListener('click', () => {
+      closeDrawer()
+      showLibrary()
+      setActiveDrawerItem('drawer-home')
+    })
+  }
+
+  if (drawerBrowse) {
+    drawerBrowse.addEventListener('click', () => {
+      closeDrawer()
+      renderGameBrowser()
+    })
+  }
+
+  if (drawerSettings) {
+    drawerSettings.addEventListener('click', () => {
+      closeDrawer()
+      renderSettingsModal()
+    })
+  }
+
+  if (drawerShortcuts) {
+    drawerShortcuts.addEventListener('click', () => {
+      closeDrawer()
+      renderShortcutsModal()
+    })
+  }
+
+  if (drawerAbout) {
+    drawerAbout.addEventListener('click', () => {
+      closeDrawer()
+      renderAboutModal()
+    })
+  }
+
+  // Swipe to close
+  let touchStartX = 0
+  let touchCurrentX = 0
+
+  drawer.addEventListener('touchstart', (e) => {
+    touchStartX = e.touches[0].clientX
+  }, { passive: true })
+
+  drawer.addEventListener('touchmove', (e) => {
+    touchCurrentX = e.touches[0].clientX
+    const diff = touchStartX - touchCurrentX
+    if (diff > 0) {
+      drawer.style.transform = `translateX(${-diff}px)`
+    }
+  }, { passive: true })
+
+  drawer.addEventListener('touchend', () => {
+    const diff = touchStartX - touchCurrentX
+    if (diff > 80) {
+      closeDrawer()
+    }
+    drawer.style.transform = ''
+    touchStartX = 0
+    touchCurrentX = 0
+  })
+
+  // Escape key to close
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && drawer.classList.contains('open')) {
+      closeDrawer()
+    }
+  })
+
+  function setActiveDrawerItem(activeId) {
+    document.querySelectorAll('.drawer-nav-item').forEach(item => {
+      item.classList.toggle('active', item.id === activeId)
+    })
+  }
+
+  // Listen for auth state changes to update drawer
+  store.subscribe(() => {
+    if (drawer.classList.contains('open')) {
+      updateDrawerUserSection()
+    }
+  })
+}
+
+// Setup Discovery Section (Search with dropdown)
+function setupDiscoverySection() {
+  const searchInput = document.getElementById('discovery-search-input')
+  const dropdown = document.getElementById('discovery-dropdown')
+  const browseAllBtn = document.getElementById('browse-all-btn')
+  const cloudLibraryBtn = document.getElementById('my-cloud-library-btn')
+  const systemsGrid = document.getElementById('dropdown-systems-grid')
+  const suggestionItems = document.getElementById('dropdown-suggestion-items')
+  const recentItems = document.getElementById('dropdown-recent-items')
+
+  if (!searchInput || !dropdown) return
+
+  // Populate systems grid in dropdown
+  if (systemsGrid) {
+    systemsGrid.innerHTML = SYSTEMS.map(sys => `
+      <div class="dropdown-system-item" data-system="${sys.id}">
+        <div class="dropdown-system-icon" style="color: ${SYSTEM_COLORS[sys.id]}">${SYSTEM_SVG_ICONS[sys.id] || '🎮'}</div>
+        <span class="dropdown-system-name">${sys.abbr}</span>
+      </div>
+    `).join('')
+
+    systemsGrid.addEventListener('click', (e) => {
+      const item = e.target.closest('.dropdown-system-item')
+      if (item) {
+        const systemId = item.dataset.system
+        hideDropdown()
+        renderGameBrowser(systemId)
+      }
+    })
+  }
+
+  // Popular suggestions
+  const popularGames = [
+    { title: 'Super Mario', system: 'NES/SNES' },
+    { title: 'Pokemon', system: 'GB/GBA' },
+    { title: 'Legend of Zelda', system: 'NES/SNES/N64' },
+    { title: 'Sonic', system: 'Genesis' },
+    { title: 'Final Fantasy', system: 'SNES/PS1' },
+    { title: 'Metroid', system: 'NES/SNES/GBA' },
+  ]
+
+  if (suggestionItems) {
+    suggestionItems.innerHTML = popularGames.map(game => `
+      <div class="dropdown-item" data-search="${game.title}">
+        <div class="dropdown-item-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="5,3 19,12 5,21"/>
+          </svg>
+        </div>
+        <div class="dropdown-item-text">
+          <div class="dropdown-item-title">${game.title}</div>
+          <div class="dropdown-item-subtitle">${game.system}</div>
+        </div>
+      </div>
+    `).join('')
+
+    suggestionItems.addEventListener('click', (e) => {
+      const item = e.target.closest('.dropdown-item')
+      if (item) {
+        const query = item.dataset.search
+        searchInput.value = query
+        hideDropdown()
+        saveRecentSearch(query)
+        renderGameBrowser(null, query)
+      }
+    })
+  }
+
+  // Load recent searches
+  function loadRecentSearches() {
+    const recent = JSON.parse(localStorage.getItem('recent_game_searches') || '[]')
+    const recentSection = document.getElementById('dropdown-recent')
+
+    if (recent.length === 0 && recentSection) {
+      recentSection.style.display = 'none'
+      return
+    }
+
+    if (recentSection) recentSection.style.display = 'block'
+    if (recentItems) {
+      recentItems.innerHTML = recent.slice(0, 5).map(query => `
+        <div class="dropdown-item" data-search="${query}">
+          <div class="dropdown-item-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+            </svg>
+          </div>
+          <div class="dropdown-item-text">
+            <div class="dropdown-item-title">${query}</div>
+          </div>
+        </div>
+      `).join('')
+
+      recentItems.addEventListener('click', (e) => {
+        const item = e.target.closest('.dropdown-item')
+        if (item) {
+          const query = item.dataset.search
+          searchInput.value = query
+          hideDropdown()
+          renderGameBrowser(null, query)
+        }
+      })
+    }
+  }
+
+  function saveRecentSearch(query) {
+    if (!query || query.length < 2) return
+    let recent = JSON.parse(localStorage.getItem('recent_game_searches') || '[]')
+    recent = recent.filter(q => q.toLowerCase() !== query.toLowerCase())
+    recent.unshift(query)
+    recent = recent.slice(0, 10)
+    localStorage.setItem('recent_game_searches', JSON.stringify(recent))
+  }
+
+  function showDropdown() {
+    loadRecentSearches()
+    dropdown.classList.add('show')
+  }
+
+  function hideDropdown() {
+    dropdown.classList.remove('show')
+  }
+
+  // Focus shows dropdown
+  searchInput.addEventListener('focus', showDropdown)
+
+  // Click outside closes dropdown
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.discovery-search')) {
+      hideDropdown()
+    }
+  })
+
+  // Enter key searches
+  searchInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      const query = searchInput.value.trim()
+      if (query) {
+        hideDropdown()
+        saveRecentSearch(query)
+        renderGameBrowser(null, query)
+      } else {
+        renderGameBrowser()
+      }
+    }
+    if (e.key === 'Escape') {
+      hideDropdown()
+      searchInput.blur()
+    }
+  })
+
+  // Browse All button
+  if (browseAllBtn) {
+    browseAllBtn.addEventListener('click', () => renderGameBrowser())
+  }
+
+  // My Cloud Library button
+  if (cloudLibraryBtn) {
+    cloudLibraryBtn.addEventListener('click', () => renderLibraryManager())
+  }
+
+  // Quick filter chips
+  document.querySelectorAll('.quick-filter-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const systemId = chip.dataset.system
+      const genre = chip.dataset.genre
+      if (systemId) {
+        renderGameBrowser(systemId)
+      } else if (genre) {
+        renderGameBrowser(null, null, genre)
+      }
+    })
+  })
+}
+
+// Populate system filter dropdown
+function populateSystemFilter() {
+  if (!systemFilter) return
+  systemFilter.innerHTML = '<option value="all">All Systems</option>' +
+    SYSTEMS.map(s => `<option value="${s.id}">${s.name}</option>`).join('')
+}
+
+// Setup library toolbar event listeners
+function setupLibraryToolbar() {
+  if (searchInput) {
+    searchInput.addEventListener('input', (e) => {
+      currentFilters.search = e.target.value.toLowerCase()
+      applyFilters()
+    })
+  }
+
+  if (systemFilter) {
+    systemFilter.addEventListener('change', (e) => {
+      currentFilters.system = e.target.value
+      applyFilters()
+    })
+  }
+
+  if (sortSelect) {
+    sortSelect.addEventListener('change', (e) => {
+      currentFilters.sortBy = e.target.value
+      applyFilters()
+    })
+  }
+
+  if (favoritesFilterBtn) {
+    favoritesFilterBtn.addEventListener('click', () => {
+      currentFilters.favoritesOnly = !currentFilters.favoritesOnly
+      favoritesFilterBtn.classList.toggle('active', currentFilters.favoritesOnly)
+      applyFilters()
+    })
+  }
+
+  if (randomBtn) {
+    randomBtn.addEventListener('click', () => {
+      if (recentGames.length > 0) {
+        const randomIndex = Math.floor(Math.random() * recentGames.length)
+        playRecentGame(randomIndex)
+      }
+    })
+  }
+
+  if (statsBtn) statsBtn.addEventListener('click', renderStatsModal)
+  if (leaderboardsBtn) leaderboardsBtn.addEventListener('click', () => renderLeaderboardsModal())
+  if (galleryBtn) galleryBtn.addEventListener('click', renderScreenshotGallery)
+  if (collectionsBtn) collectionsBtn.addEventListener('click', renderCollectionsModal)
+}
+
+// Apply filters to recent games
+function applyFilters() {
+  let filtered = [...recentGames]
+
+  if (currentFilters.search) {
+    filtered = filtered.filter(g => g.name.toLowerCase().includes(currentFilters.search))
+  }
+
+  if (currentFilters.system !== 'all') {
+    filtered = filtered.filter(g => g.systemId === currentFilters.system)
+  }
+
+  if (currentFilters.favoritesOnly) {
+    const favorites = getFavorites()
+    filtered = filtered.filter(g => favorites.includes(g.gameId))
+  }
+
+  if (currentFilters.sortBy === 'name') {
+    filtered.sort((a, b) => a.name.localeCompare(b.name))
+  } else if (currentFilters.sortBy === 'system') {
+    filtered.sort((a, b) => a.systemName.localeCompare(b.systemName))
+  }
+
+  renderFilteredGames(filtered)
+}
+
+// Render filtered games
+function renderFilteredGames(games) {
+  if (games.length === 0) {
+    gamesGrid.innerHTML = '<div class="no-games">No games match your filters</div>'
+    return
+  }
+
+  gamesGrid.innerHTML = games.map((game) => {
+    const index = recentGames.findIndex(g => g.gameId === game.gameId)
+    const favorited = isFavorite(game.gameId)
+    return `
+    <div class="game-card ${game.coverUrl ? 'has-cover' : ''}" data-index="${index}" data-game-id="${game.gameId}" style="--system-color: ${SYSTEM_COLORS[game.systemId] || '#666'}">
+      <button class="favorite-btn ${favorited ? 'active' : ''}" data-game-id="${game.gameId}" title="${favorited ? 'Remove from favorites' : 'Add to favorites'}">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="${favorited ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2">
+          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+        </svg>
+      </button>
+      ${game.coverUrl ? `
+        <div class="game-card-cover">
+          <img src="${game.coverUrl}" alt="${game.name}" loading="lazy"
+            onerror="this.parentElement.parentElement.classList.remove('has-cover'); this.parentElement.remove();" />
+          <div class="cover-gradient"></div>
+        </div>
+      ` : `
+        <div class="game-card-header">
+          <div class="game-card-logo" data-system="${game.systemId}">
+            <img
+              src="${SYSTEM_LOGOS[game.systemId]}"
+              alt="${game.systemName}"
+              class="game-logo-img"
+              onerror="handleLogoError(this, '${game.systemId}')"
+            />
+          </div>
+        </div>
+      `}
+      <div class="game-card-info">
+        <span class="system-badge">${game.systemName}</span>
+        <div class="game-card-title">${game.name}</div>
+      </div>
+      <div class="game-card-actions">
+        <button class="play-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg> Play</button>
+        <button class="delete-btn">Remove</button>
+      </div>
+    </div>
+  `}).join('')
+}
+
+// Expose modal functions globally for backup access
+window.openSettings = renderSettingsModal
+window.openShortcuts = renderShortcutsModal
+window.openAbout = renderAboutModal
+
+// Register service worker for PWA support
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then((registration) => {
+        console.log('Service Worker registered:', registration.scope)
+        // Check for updates
+        registration.addEventListener('updatefound', () => {
+          const newWorker = registration.installing
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              // New content available, show update notification
+              showToast('New version available! Refresh to update.', 'info')
+            }
+          })
+        })
+      })
+      .catch((error) => {
+        console.log('Service Worker registration failed:', error)
+      })
+  })
+}
+
+// Initialize - Show welcome screen on first visit
+if (!hasSeenWelcome()) {
+  // Hide app initially
+  document.getElementById('app').style.display = 'none'
+  // Show welcome screen, then init app
+  renderWelcomeScreen(() => {
+    init()
+  })
+} else {
+  init()
+}

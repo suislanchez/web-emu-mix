@@ -321,6 +321,8 @@ function showForgotPasswordForm() {
 async function handleAuthSubmit(mode) {
   const form = document.getElementById('auth-form')
   const submitBtn = document.getElementById('auth-submit')
+  const btnText = submitBtn.querySelector('.btn-text')
+  const btnLoading = submitBtn.querySelector('.btn-loading')
   const errorDiv = document.getElementById('auth-error')
 
   const email = form.email.value
@@ -328,7 +330,8 @@ async function handleAuthSubmit(mode) {
   const username = form.username?.value
 
   submitBtn.disabled = true
-  submitBtn.textContent = mode === 'login' ? 'Signing in...' : 'Creating account...'
+  btnText.style.display = 'none'
+  btnLoading.style.display = 'flex'
   errorDiv.style.display = 'none'
 
   try {
@@ -346,7 +349,8 @@ async function handleAuthSubmit(mode) {
     errorDiv.style.display = 'block'
   } finally {
     submitBtn.disabled = false
-    submitBtn.textContent = mode === 'login' ? 'Sign In' : 'Create Account'
+    btnText.style.display = 'inline'
+    btnLoading.style.display = 'none'
   }
 }
 
@@ -393,16 +397,16 @@ export function updateHeaderUI() {
         <button class="user-btn" id="user-menu-btn">
           <img src="${profile.avatar_url || 'https://api.dicebear.com/7.x/pixel-art/svg?seed=' + profile.username}" alt="" class="user-avatar">
           <span class="user-name">${profile.username}</span>
-          <span class="dropdown-arrow">▼</span>
+          <svg class="dropdown-arrow" width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
         </button>
         <div class="user-dropdown" id="user-dropdown">
-          <a href="#" id="menu-profile"><span>👤</span> Profile</a>
-          <a href="#" id="menu-saves"><span>💾</span> Cloud Saves</a>
-          <a href="#" id="menu-achievements"><span>🏆</span> Achievements</a>
-          <a href="#" id="menu-favorites"><span>❤️</span> Favorites</a>
+          <a href="#" id="menu-profile"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> Profile</a>
+          <a href="#" id="menu-saves"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Cloud Saves</a>
+          <a href="#" id="menu-achievements"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg> Achievements</a>
+          <a href="#" id="menu-favorites"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg> Favorites</a>
           <div class="dropdown-divider"></div>
-          <a href="#" id="menu-settings"><span>⚙️</span> Settings</a>
-          <a href="#" id="menu-logout"><span>🚪</span> Sign Out</a>
+          <a href="#" id="menu-settings"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> Settings</a>
+          <a href="#" id="menu-logout"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg> Sign Out</a>
         </div>
       </div>
     `
@@ -445,19 +449,16 @@ export function updateHeaderUI() {
     })
   } else {
     headerRight.innerHTML = `
-      <button class="icon-btn" id="settings-btn" title="Settings">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="12" r="3"></circle>
-          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+      <button class="auth-btn" id="auth-btn">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
+          <circle cx="12" cy="7" r="4"/>
         </svg>
+        <span>Sign In</span>
       </button>
-      <button class="btn btn-outline" id="login-btn">Sign In</button>
-      <button class="btn btn-primary" id="register-btn">Sign Up</button>
     `
 
-    document.getElementById('settings-btn').addEventListener('click', () => renderSettingsModal())
-    document.getElementById('login-btn').addEventListener('click', () => renderAuthModal('login'))
-    document.getElementById('register-btn').addEventListener('click', () => renderAuthModal('register'))
+    document.getElementById('auth-btn').addEventListener('click', () => renderAuthModal('login'))
   }
 }
 
@@ -469,7 +470,7 @@ export function showProfileView() {
   const mainContent = document.querySelector('.main-content')
   mainContent.innerHTML = `
     <div class="profile-view">
-      <button class="btn btn-outline back-btn" id="profile-back">← Back to Library</button>
+      <button class="btn btn-outline back-btn" id="profile-back"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg> Back to Library</button>
 
       <div class="profile-header">
         <div class="profile-avatar-section">
@@ -574,7 +575,7 @@ export function showAchievementsView() {
   const mainContent = document.querySelector('.main-content')
   mainContent.innerHTML = `
     <div class="achievements-view">
-      <button class="btn btn-outline back-btn" id="achievements-back">← Back to Library</button>
+      <button class="btn btn-outline back-btn" id="achievements-back"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg> Back to Library</button>
       <h1>Achievements</h1>
       <div id="achievements-grid" class="achievements-grid">
         <p class="loading-text">Loading achievements...</p>
@@ -608,7 +609,7 @@ async function loadAchievements(userId) {
             <div class="achievement-desc">${achievement.description}</div>
             <div class="achievement-points">${achievement.points} pts</div>
           </div>
-          ${unlocked ? '<div class="achievement-check">✓</div>' : ''}
+          ${unlocked ? '<div class="achievement-check"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>' : ''}
         </div>
       `
     }).join('')
