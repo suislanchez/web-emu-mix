@@ -353,10 +353,10 @@ function setupEventListeners() {
     const { user } = store.getState()
 
     if (user) {
-      // Save to Supabase cloud using save state (full snapshot)
+      // Save to Supabase cloud using SRAM save file
       try {
         showLoading('Saving to cloud...')
-        const saveData = window.EJS_emulator.gameManager.getState()
+        const saveData = window.EJS_emulator.gameManager.getSaveFile()
         if (saveData) {
           const blob = new Blob([saveData], { type: 'application/octet-stream' })
           await saves.save(user.id, currentGame.gameId, blob)
@@ -391,15 +391,14 @@ function setupEventListeners() {
     const { user } = store.getState()
 
     if (user) {
-      // Try to load from Supabase cloud (save state format)
+      // Try to load from Supabase cloud (SRAM save file format)
       try {
         showLoading('Loading from cloud...')
         const saveBlob = await saves.load(user.id, currentGame.gameId)
         if (saveBlob) {
           const arrayBuffer = await saveBlob.arrayBuffer()
-          const saveData = new Uint8Array(arrayBuffer)
-          // Load the save state into the emulator
-          window.EJS_emulator.gameManager.loadState(saveData)
+          // Load the SRAM save file into the emulator
+          window.EJS_emulator.gameManager.loadSaveFiles(arrayBuffer)
           showToast('Loaded from cloud!', 'success')
         } else {
           // No cloud save, try local
@@ -1027,7 +1026,7 @@ function showCloudSaveMenu(hasCloudSave) {
     const { user } = store.getState()
     try {
       showLoading('Uploading to cloud...')
-      const saveData = window.EJS_emulator.gameManager.getState()
+      const saveData = window.EJS_emulator.gameManager.getSaveFile()
       if (saveData) {
         const blob = new Blob([saveData], { type: 'application/octet-stream' })
         await saves.save(user.id, currentGame.gameId, blob)
@@ -1052,11 +1051,8 @@ function showCloudSaveMenu(hasCloudSave) {
         const saveBlob = await saves.load(user.id, currentGame.gameId)
         if (saveBlob) {
           const arrayBuffer = await saveBlob.arrayBuffer()
-          const saveData = new Uint8Array(arrayBuffer)
-          // Load save data into emulator
-          if (window.EJS_emulator.gameManager.loadState) {
-            window.EJS_emulator.gameManager.loadState(saveData)
-          }
+          // Load SRAM save file into emulator
+          window.EJS_emulator.gameManager.loadSaveFiles(arrayBuffer)
           showToast('Downloaded from cloud!', 'success')
         }
       } catch (error) {

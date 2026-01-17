@@ -2,7 +2,8 @@
 // Console-first browsing with Netflix/TV-style interface
 
 import { toggleFavorite, isFavorite } from '../lib/library.js'
-import { loadRecentGames, deleteGameById } from '../lib/store.js'
+import { loadRecentGames, deleteGameById, store } from '../lib/store.js'
+import { renderAuthModal } from './auth.js'
 
 let currentView = 'consoles' // 'consoles' or 'games'
 let selectedConsole = null
@@ -12,32 +13,56 @@ let featuredItem = null
 let onPlayGame = null
 let recentGames = []
 
-// Console definitions with logos
+// Console definitions with logos and system info
 const CONSOLES = [
   { id: 'nes', name: 'Nintendo Entertainment System', shortName: 'NES', color: '#e60012',
-    logo: 'https://upload.wikimedia.org/wikipedia/commons/0/0d/NES_logo.svg' },
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/0/0d/NES_logo.svg',
+    manufacturer: 'Nintendo', year: 1983, bits: '8-bit',
+    description: 'The console that revived the video game industry. Home to Mario, Zelda, and countless classics.' },
   { id: 'snes', name: 'Super Nintendo', shortName: 'SNES', color: '#7b5aa6',
-    logo: 'https://upload.wikimedia.org/wikipedia/commons/2/2c/SNES_logo.svg' },
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/2/2c/SNES_logo.svg',
+    manufacturer: 'Nintendo', year: 1990, bits: '16-bit',
+    description: 'Nintendo\'s 16-bit powerhouse featuring Mode 7 graphics and iconic RPGs.' },
   { id: 'gb', name: 'Game Boy', shortName: 'GB', color: '#8b956d',
-    logo: 'https://upload.wikimedia.org/wikipedia/commons/f/f4/Game_Boy_logo.svg' },
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/f/f4/Game_Boy_logo.svg',
+    manufacturer: 'Nintendo', year: 1989, bits: '8-bit',
+    description: 'The legendary handheld that started portable gaming with Tetris and Pokemon.' },
   { id: 'gbc', name: 'Game Boy Color', shortName: 'GBC', color: '#4ecdc4',
-    logo: 'https://upload.wikimedia.org/wikipedia/commons/5/56/Game_Boy_Color_logo.svg' },
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/5/56/Game_Boy_Color_logo.svg',
+    manufacturer: 'Nintendo', year: 1998, bits: '8-bit',
+    description: 'The colorful evolution of Game Boy with enhanced graphics and new exclusives.' },
   { id: 'gba', name: 'Game Boy Advance', shortName: 'GBA', color: '#5a5eb9',
-    logo: 'https://upload.wikimedia.org/wikipedia/commons/8/8a/Gameboy_advance_logo.svg' },
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/8/8a/Gameboy_advance_logo.svg',
+    manufacturer: 'Nintendo', year: 2001, bits: '32-bit',
+    description: 'A portable SNES with 32-bit power, featuring amazing ports and original titles.' },
   { id: 'nds', name: 'Nintendo DS', shortName: 'NDS', color: '#a0a0a0',
-    logo: 'https://upload.wikimedia.org/wikipedia/commons/a/af/Nintendo_DS_Logo.svg' },
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/a/af/Nintendo_DS_Logo.svg',
+    manufacturer: 'Nintendo', year: 2004, bits: '32-bit',
+    description: 'Dual-screen innovation with touch controls that revolutionized handheld gaming.' },
   { id: 'n64', name: 'Nintendo 64', shortName: 'N64', color: '#339947',
-    logo: 'https://upload.wikimedia.org/wikipedia/commons/0/0d/Nintendo_64_Logo.svg' },
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/0/0d/Nintendo_64_Logo.svg',
+    manufacturer: 'Nintendo', year: 1996, bits: '64-bit',
+    description: 'Nintendo\'s first 3D console with groundbreaking titles like Mario 64 and Ocarina of Time.' },
   { id: 'segaMD', name: 'Sega Genesis', shortName: 'Genesis', color: '#17569b',
-    logo: 'https://upload.wikimedia.org/wikipedia/commons/8/8e/Sega_Genesis_Logo.svg' },
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/8/8e/Sega_Genesis_Logo.svg',
+    manufacturer: 'Sega', year: 1988, bits: '16-bit',
+    description: 'Sega does what Nintendon\'t! The blast processing beast of the 16-bit era.' },
   { id: 'segaMS', name: 'Sega Master System', shortName: 'SMS', color: '#e60012',
-    logo: 'https://upload.wikimedia.org/wikipedia/commons/9/99/Sega_Master_System_Logo.svg' },
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/9/99/Sega_Master_System_Logo.svg',
+    manufacturer: 'Sega', year: 1985, bits: '8-bit',
+    description: 'Sega\'s 8-bit contender with vibrant graphics and arcade-perfect ports.' },
   { id: 'segaGG', name: 'Sega Game Gear', shortName: 'GG', color: '#1976d2',
-    logo: 'https://upload.wikimedia.org/wikipedia/commons/7/77/Sega_Game_Gear_Logo.svg' },
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/7/77/Sega_Game_Gear_Logo.svg',
+    manufacturer: 'Sega', year: 1990, bits: '8-bit',
+    description: 'Sega\'s full-color handheld with backlit screen and Master System compatibility.' },
   { id: 'psx', name: 'PlayStation', shortName: 'PS1', color: '#003087',
-    logo: 'https://upload.wikimedia.org/wikipedia/commons/4/4e/Playstation_logo_colour.svg' },
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/4/4e/Playstation_logo_colour.svg',
+    manufacturer: 'Sony', year: 1994, bits: '32-bit',
+    description: 'Sony\'s debut console that redefined gaming with 3D graphics and CD-based games.' },
   { id: 'arcade', name: 'Arcade', shortName: 'Arcade', color: '#ff9800',
-    logo: null }
+    logo: null,
+    manufacturer: 'Various', year: 1970, bits: 'Various',
+    description: 'Classic coin-op games from the golden age of arcades.' }
 ]
 
 export function renderWebrcadeView(container, playGameCallback) {
@@ -100,6 +125,7 @@ function renderConsolesView(container) {
               <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
             </svg>
           </button>
+          ${renderAccountButton()}
         </nav>
       </header>
 
@@ -184,6 +210,7 @@ function renderGamesView(container) {
               <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
             </svg>
           </button>
+          ${renderAccountButton()}
         </nav>
       </header>
 
@@ -230,7 +257,9 @@ function renderHeroSection(item) {
   const isGame = item.type === 'game' || item.gameId
   const color = isGame ? getSystemColor(item.systemId) : item.color
   const title = isGame ? item.name : item.name
-  const subtitle = isGame ? (item.systemName || item.systemId) : 'Select to browse games'
+  const subtitle = isGame
+    ? (item.systemName || item.systemId)
+    : `${item.manufacturer} · ${item.year} · ${item.bits}`
 
   return `
     <section class="wr-hero" style="--accent-color: ${color}">
@@ -255,13 +284,16 @@ function renderHeroSection(item) {
               </svg>
             </button>
           </div>
-        ` : ''}
+        ` : `
+          <p class="wr-hero-desc">${item.description || 'Select to browse games'}</p>
+        `}
       </div>
       <div class="wr-hero-art">
         ${isGame && item.coverUrl
           ? `<img src="${item.coverUrl}" alt="${title}" />`
           : item.logo
-            ? `<img src="${item.logo}" alt="${title}" class="wr-console-logo" onerror="this.style.display='none'" />`
+            ? `<img src="${item.logo}" alt="${title}" class="wr-console-logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'" />
+               <div class="wr-hero-placeholder" style="display:none">${getSystemIcon(item.id || item.systemId)}</div>`
             : `<div class="wr-hero-placeholder">${getSystemIcon(item.id || item.systemId)}</div>`
         }
       </div>
@@ -302,14 +334,16 @@ function renderConsoleCard(console, index) {
   return `
     <div class="wr-card wr-card-console ${index === selectedIndex ? 'selected' : ''}"
          data-console="${console.id}" data-index="${index}" style="--card-color: ${console.color}">
-      <div class="wr-card-art">
+      <div class="wr-card-art" data-system="${console.id}">
         ${console.logo
-          ? `<img src="${console.logo}" alt="${console.shortName}" onerror="this.parentElement.innerHTML='${getSystemIcon(console.id)}'" />`
-          : getSystemIcon(console.id)
+          ? `<img src="${console.logo}" alt="${console.shortName}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'" />
+             <div class="wr-card-svg-fallback" style="display:none">${getSystemIcon(console.id)}</div>`
+          : `<div class="wr-card-svg-fallback">${getSystemIcon(console.id)}</div>`
         }
       </div>
       <div class="wr-card-info">
         <span class="wr-card-title">${console.shortName}</span>
+        <span class="wr-card-meta">${console.manufacturer} · ${console.year}</span>
         ${console.gameCount > 0 ? `<span class="wr-card-count">${console.gameCount} games</span>` : ''}
       </div>
     </div>
@@ -357,6 +391,16 @@ function setupEvents(container) {
 
   document.getElementById('wr-settings-btn')?.addEventListener('click', () => {
     import('./settings.js').then(m => m.renderSettingsModal())
+  })
+
+  // Account button
+  document.getElementById('wr-account-btn')?.addEventListener('click', () => {
+    const { user } = store.getState()
+    if (user) {
+      import('./auth.js').then(m => m.showProfileView())
+    } else {
+      renderAuthModal('login')
+    }
   })
 
   // Empty state buttons
@@ -558,8 +602,119 @@ function getSystemColor(systemId) {
   return colors[systemId] || '#666'
 }
 
+function renderAccountButton() {
+  const { user, profile } = store.getState()
+
+  if (user && profile) {
+    return `
+      <button class="wr-nav-btn wr-account-btn" id="wr-account-btn" title="Account">
+        <img src="${profile.avatar_url || 'https://api.dicebear.com/7.x/pixel-art/svg?seed=' + profile.username}"
+             alt="${profile.username}" class="wr-avatar" />
+      </button>
+    `
+  }
+
+  return `
+    <button class="wr-nav-btn wr-account-btn" id="wr-account-btn" title="Sign In">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+        <circle cx="12" cy="7" r="4"/>
+      </svg>
+    </button>
+  `
+}
+
 function getSystemIcon(systemId) {
-  return `<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+  const icons = {
+    nes: `<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <rect x="2" y="7" width="20" height="10" rx="1"/>
+      <rect x="4" y="9" width="4" height="4" rx="0.5"/>
+      <circle cx="14" cy="11" r="1"/>
+      <circle cx="17" cy="11" r="1"/>
+      <line x1="7" y1="17" x2="7" y2="19"/>
+      <line x1="17" y1="17" x2="17" y2="19"/>
+    </svg>`,
+    snes: `<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <rect x="1" y="8" width="22" height="8" rx="2"/>
+      <circle cx="6" cy="12" r="2"/>
+      <circle cx="16" cy="11" r="1"/>
+      <circle cx="19" cy="12" r="1"/>
+      <circle cx="16" cy="13" r="1"/>
+      <rect x="9" y="10" width="3" height="4" rx="0.5"/>
+    </svg>`,
+    gb: `<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <rect x="5" y="2" width="14" height="20" rx="2"/>
+      <rect x="7" y="4" width="10" height="8" rx="1"/>
+      <circle cx="9" cy="16" r="1.5"/>
+      <circle cx="14" cy="15" r="1"/>
+      <circle cx="16" cy="17" r="1"/>
+    </svg>`,
+    gbc: `<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <rect x="5" y="2" width="14" height="20" rx="2"/>
+      <rect x="7" y="4" width="10" height="8" rx="1"/>
+      <circle cx="9" cy="16" r="1.5"/>
+      <circle cx="14" cy="15" r="1"/>
+      <circle cx="16" cy="17" r="1"/>
+      <line x1="7" y1="6" x2="17" y2="10" stroke-width="0.5"/>
+    </svg>`,
+    gba: `<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <rect x="1" y="6" width="22" height="12" rx="3"/>
+      <rect x="7" y="8" width="10" height="6" rx="1"/>
+      <circle cx="4" cy="12" r="1.5"/>
+      <circle cx="20" cy="11" r="0.8"/>
+      <circle cx="20" cy="13" r="0.8"/>
+    </svg>`,
+    nds: `<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <rect x="5" y="1" width="14" height="10" rx="1"/>
+      <rect x="5" y="13" width="14" height="10" rx="1"/>
+      <rect x="7" y="3" width="10" height="6" rx="0.5"/>
+      <rect x="7" y="15" width="10" height="6" rx="0.5"/>
+      <line x1="5" y1="12" x2="19" y2="12" stroke-width="0.5"/>
+    </svg>`,
+    n64: `<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <path d="M12 4L4 8v8l8 4 8-4V8l-8-4z"/>
+      <path d="M12 4v8l8-4"/>
+      <path d="M12 12l-8-4"/>
+      <path d="M12 12v8"/>
+    </svg>`,
+    segaMD: `<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <rect x="2" y="7" width="20" height="10" rx="1"/>
+      <circle cx="7" cy="12" r="2"/>
+      <circle cx="15" cy="11" r="1"/>
+      <circle cx="18" cy="12" r="1"/>
+      <circle cx="15" cy="13" r="1"/>
+      <rect x="10" y="10" width="2" height="4" rx="0.5"/>
+    </svg>`,
+    segaMS: `<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <rect x="2" y="8" width="20" height="8" rx="1"/>
+      <rect x="4" y="10" width="3" height="3" rx="0.5"/>
+      <circle cx="17" cy="12" r="1.5"/>
+      <rect x="9" y="16" width="6" height="2" rx="0.5"/>
+    </svg>`,
+    segaGG: `<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <rect x="2" y="5" width="20" height="14" rx="2"/>
+      <rect x="5" y="7" width="14" height="10" rx="1"/>
+      <circle cx="5" cy="12" r="0.5"/>
+      <circle cx="19" cy="12" r="0.5"/>
+    </svg>`,
+    psx: `<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <rect x="2" y="8" width="20" height="10" rx="1"/>
+      <circle cx="7" cy="13" r="2"/>
+      <circle cx="17" cy="12" r="1"/>
+      <circle cx="19" cy="14" r="1"/>
+      <circle cx="15" cy="14" r="1"/>
+      <circle cx="17" cy="16" r="1"/>
+    </svg>`,
+    arcade: `<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <rect x="4" y="2" width="16" height="20" rx="2"/>
+      <rect x="6" y="4" width="12" height="8" rx="1"/>
+      <circle cx="8" cy="16" r="1.5"/>
+      <circle cx="14" cy="15" r="1"/>
+      <circle cx="17" cy="16" r="1"/>
+      <circle cx="14" cy="18" r="1"/>
+    </svg>`
+  }
+  return icons[systemId] || `<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
     <rect x="2" y="6" width="20" height="12" rx="2"/>
     <circle cx="8" cy="12" r="2"/>
     <circle cx="17" cy="10" r="1.5"/>
