@@ -28,7 +28,7 @@ import { renderCollectionsModal } from './components/collectionsModal.js'
 import { renderLeaderboardsModal } from './components/leaderboardsModal.js'
 import { renderGameBrowser, closeBrowser as closeGameBrowser } from './components/gameBrowser.js'
 import { renderLibraryManager, closeLibraryManager } from './components/libraryManager.js'
-import { renderWebrcadeView, cleanupWebrcadeView } from './components/webrcadeView.js'
+import { renderWebrcadeView, cleanupWebrcadeView, refreshWebrcadeView } from './components/webrcadeView.js'
 import { handleOAuthCallbackPage } from './components/storageSettings.js'
 import {
   applyShader, SHADERS,
@@ -206,25 +206,22 @@ async function init() {
       if (event === 'SIGNED_IN') {
         await loadUserData()
         updateHeaderUI()
-        // Refresh XMB if active to update user items
+        // Refresh views
         refreshXMB()
+        refreshWebrcadeView()
       } else if (event === 'SIGNED_OUT') {
         store.setState({ user: null, profile: null })
         updateHeaderUI()
         refreshXMB()
+        refreshWebrcadeView()
       }
     })
   } catch (e) {
     console.log('Auth listener not available')
   }
 
-  // Check view mode on startup
-  const settings = loadSettings()
-  if (settings.xmbMode) {
-    renderXMB(handleXMBGameSelect)
-  } else if (settings.webrcadeMode) {
-    renderWebrcadeMode()
-  }
+  // Always start in webrcade mode (default UI)
+  renderWebrcadeMode()
 }
 
 // Render webrcade view mode
@@ -805,8 +802,9 @@ async function saveGameToRecent(gameInfo, file) {
   recentGames = recentGames.slice(0, 20)
   updateRecentGames(recentGames)
 
-  // Refresh XMB if active
+  // Refresh views
   refreshXMB()
+  refreshWebrcadeView()
 
   // Fetch cover art in the background
   fetchCoverArt(gameInfo.name, gameInfo.systemId).then(coverUrl => {
@@ -817,6 +815,7 @@ async function saveGameToRecent(gameInfo, file) {
         updateRecentGames(recentGames)
         renderRecentGames()
         refreshXMB()
+        refreshWebrcadeView()
       }
     }
   }).catch(() => {})
@@ -920,6 +919,7 @@ function deleteGame(index) {
   updateRecentGames(recentGames)
   renderRecentGames()
   refreshXMB()
+  refreshWebrcadeView()
   showToast('Game removed', 'success')
 }
 
@@ -1162,6 +1162,7 @@ function setupMobileDrawer() {
   // Drawer navigation items
   const drawerHome = document.getElementById('drawer-home')
   const drawerBrowse = document.getElementById('drawer-browse')
+  const drawerCloudLibrary = document.getElementById('drawer-cloud-library')
   const drawerSettings = document.getElementById('drawer-settings')
   const drawerShortcuts = document.getElementById('drawer-shortcuts')
   const drawerAbout = document.getElementById('drawer-about')
@@ -1178,6 +1179,13 @@ function setupMobileDrawer() {
     drawerBrowse.addEventListener('click', () => {
       closeDrawer()
       renderGameBrowser()
+    })
+  }
+
+  if (drawerCloudLibrary) {
+    drawerCloudLibrary.addEventListener('click', () => {
+      closeDrawer()
+      renderLibraryManager()
     })
   }
 
