@@ -597,6 +597,67 @@ export const library = {
     }
 
     throw new Error('Cannot load ROM from this storage type')
+  },
+
+  // Upload a ROM file to cloud storage
+  async uploadRom(userId, file, gameName, systemId) {
+    if (!supabase) throw new Error('Offline mode')
+
+    // Generate unique path
+    const timestamp = Date.now()
+    const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_')
+    const storagePath = `${userId}/${systemId}/${timestamp}_${safeName}`
+
+    // Upload file to storage
+    const { error: uploadError } = await supabase.storage
+      .from('user_roms')
+      .upload(storagePath, file, {
+        cacheControl: '3600',
+        upsert: false
+      })
+
+    if (uploadError) throw uploadError
+
+    // Create library entry (without catalog reference for user uploads)
+    const { data, error } = await supabase
+      .from('user_library')
+      .insert({
+        user_id: userId,
+        catalog_id: null, // User upload, no catalog reference
+        storage_type: 'supabase',
+        storage_path: storagePath,
+        file_size: file.size,
+        download_status: 'completed',
+        custom_title: gameName,
+        system_id: systemId,
+        added_at: new Date().toISOString()
+      })
+      .select()
+      .single()
+
+    if (error) {
+      // Cleanup storage if DB insert fails
+      await supabase.storage.from('user_roms').remove([storagePath])
+      throw error
+    }
+
+    return data
+  },
+
+  // Get user's storage quota info
+  async getStorageUsed(userId) {
+    if (!supabase) return { used: 0, total: 5 * 1024 * 1024 * 1024 } // 5GB default
+
+    const { data, error } = await supabase
+      .from('user_library')
+      .select('file_size')
+      .eq('user_id', userId)
+      .eq('storage_type', 'supabase')
+
+    if (error) throw error
+
+    const usedBytes = (data || []).reduce((sum, item) => sum + (item.file_size || 0), 0)
+    return { used: usedBytes, total: 5 * 1024 * 1024 * 1024 } // 5GB limit
   }
 }
 

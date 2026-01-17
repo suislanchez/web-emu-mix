@@ -43,6 +43,14 @@ export async function renderLibraryManager() {
       </button>
       <h1>My Library</h1>
       <div class="library-header-actions">
+        <button class="btn btn-accent" id="upload-rom-btn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+          Upload ROM
+        </button>
         <button class="btn btn-primary" id="browse-more-btn">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
@@ -87,6 +95,9 @@ export async function renderLibraryManager() {
 function setupLibraryEvents() {
   // Back button
   document.getElementById('library-back')?.addEventListener('click', closeLibraryManager)
+
+  // Upload ROM button
+  document.getElementById('upload-rom-btn')?.addEventListener('click', showUploadModal)
 
   // Browse more
   document.getElementById('browse-more-btn')?.addEventListener('click', () => {
@@ -361,6 +372,264 @@ function showToast(message, type = 'info') {
     toast.classList.remove('show')
     setTimeout(() => toast.remove(), 300)
   }, 3000)
+}
+
+// System options for upload
+const UPLOAD_SYSTEMS = [
+  { id: 'nes', name: 'Nintendo (NES)', extensions: '.nes' },
+  { id: 'snes', name: 'Super Nintendo (SNES)', extensions: '.sfc, .smc' },
+  { id: 'gb', name: 'Game Boy', extensions: '.gb' },
+  { id: 'gbc', name: 'Game Boy Color', extensions: '.gbc' },
+  { id: 'gba', name: 'Game Boy Advance', extensions: '.gba' },
+  { id: 'nds', name: 'Nintendo DS', extensions: '.nds' },
+  { id: 'n64', name: 'Nintendo 64', extensions: '.n64, .z64, .v64' },
+  { id: 'segaMD', name: 'Sega Genesis/Mega Drive', extensions: '.md, .gen, .bin' },
+  { id: 'segaMS', name: 'Sega Master System', extensions: '.sms' },
+  { id: 'segaGG', name: 'Sega Game Gear', extensions: '.gg' },
+  { id: 'psx', name: 'PlayStation 1', extensions: '.bin, .iso, .cue' },
+  { id: 'arcade', name: 'Arcade (MAME)', extensions: '.zip' },
+]
+
+// Show upload modal
+function showUploadModal() {
+  const existing = document.querySelector('.upload-modal')
+  if (existing) existing.remove()
+
+  const modal = document.createElement('div')
+  modal.className = 'upload-modal'
+  modal.innerHTML = `
+    <div class="upload-modal-overlay"></div>
+    <div class="upload-modal-content">
+      <div class="upload-modal-header">
+        <h2>Upload ROM to Cloud</h2>
+        <button class="close-btn" id="upload-close">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="upload-modal-body">
+        <div class="upload-drop-zone" id="upload-drop-zone">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+          <p>Drag & drop ROM file here</p>
+          <span>or click to browse</span>
+          <input type="file" id="upload-file-input" accept=".nes,.sfc,.smc,.gb,.gbc,.gba,.nds,.n64,.z64,.v64,.md,.gen,.bin,.iso,.cue,.sms,.gg,.zip" hidden />
+        </div>
+
+        <div class="upload-file-info" id="upload-file-info" style="display: none;">
+          <div class="file-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+            </svg>
+          </div>
+          <div class="file-details">
+            <span class="file-name" id="upload-file-name">-</span>
+            <span class="file-size" id="upload-file-size">-</span>
+          </div>
+          <button class="remove-file-btn" id="remove-file-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+
+        <div class="upload-form-group">
+          <label for="upload-game-name">Game Name</label>
+          <input type="text" id="upload-game-name" placeholder="Enter game name..." />
+        </div>
+
+        <div class="upload-form-group">
+          <label for="upload-system">System</label>
+          <select id="upload-system">
+            <option value="">Select system...</option>
+            ${UPLOAD_SYSTEMS.map(sys => `<option value="${sys.id}">${sys.name} (${sys.extensions})</option>`).join('')}
+          </select>
+        </div>
+
+        <div class="upload-quota-info" id="upload-quota-info">
+          <div class="quota-bar">
+            <div class="quota-used" id="upload-quota-used" style="width: 0%"></div>
+          </div>
+          <span class="quota-text" id="upload-quota-text">Checking storage...</span>
+        </div>
+      </div>
+
+      <div class="upload-modal-footer">
+        <button class="btn btn-outline" id="upload-cancel">Cancel</button>
+        <button class="btn btn-primary" id="upload-submit" disabled>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+          Upload to Cloud
+        </button>
+      </div>
+    </div>
+  `
+
+  document.body.appendChild(modal)
+
+  // Elements
+  const dropZone = document.getElementById('upload-drop-zone')
+  const fileInput = document.getElementById('upload-file-input')
+  const fileInfo = document.getElementById('upload-file-info')
+  const fileName = document.getElementById('upload-file-name')
+  const fileSize = document.getElementById('upload-file-size')
+  const removeFileBtn = document.getElementById('remove-file-btn')
+  const gameNameInput = document.getElementById('upload-game-name')
+  const systemSelect = document.getElementById('upload-system')
+  const submitBtn = document.getElementById('upload-submit')
+
+  let selectedFile = null
+
+  // Load quota
+  loadUploadQuota()
+
+  // File selection
+  dropZone.addEventListener('click', () => fileInput.click())
+
+  dropZone.addEventListener('dragover', (e) => {
+    e.preventDefault()
+    dropZone.classList.add('dragover')
+  })
+
+  dropZone.addEventListener('dragleave', () => {
+    dropZone.classList.remove('dragover')
+  })
+
+  dropZone.addEventListener('drop', (e) => {
+    e.preventDefault()
+    dropZone.classList.remove('dragover')
+    if (e.dataTransfer.files.length) {
+      handleFileSelect(e.dataTransfer.files[0])
+    }
+  })
+
+  fileInput.addEventListener('change', (e) => {
+    if (e.target.files.length) {
+      handleFileSelect(e.target.files[0])
+    }
+  })
+
+  removeFileBtn.addEventListener('click', () => {
+    selectedFile = null
+    dropZone.style.display = ''
+    fileInfo.style.display = 'none'
+    fileInput.value = ''
+    validateForm()
+  })
+
+  function handleFileSelect(file) {
+    selectedFile = file
+    dropZone.style.display = 'none'
+    fileInfo.style.display = 'flex'
+    fileName.textContent = file.name
+    fileSize.textContent = formatFileSize(file.size)
+
+    // Auto-fill game name from filename
+    const nameWithoutExt = file.name.replace(/\.[^.]+$/, '').replace(/[_-]/g, ' ')
+    if (!gameNameInput.value) {
+      gameNameInput.value = nameWithoutExt
+    }
+
+    // Auto-detect system from extension
+    const ext = '.' + file.name.split('.').pop().toLowerCase()
+    for (const sys of UPLOAD_SYSTEMS) {
+      if (sys.extensions.includes(ext)) {
+        systemSelect.value = sys.id
+        break
+      }
+    }
+
+    validateForm()
+  }
+
+  // Form validation
+  gameNameInput.addEventListener('input', validateForm)
+  systemSelect.addEventListener('change', validateForm)
+
+  function validateForm() {
+    const valid = selectedFile && gameNameInput.value.trim() && systemSelect.value
+    submitBtn.disabled = !valid
+  }
+
+  // Close modal
+  modal.querySelector('.upload-modal-overlay').addEventListener('click', () => modal.remove())
+  document.getElementById('upload-close').addEventListener('click', () => modal.remove())
+  document.getElementById('upload-cancel').addEventListener('click', () => modal.remove())
+
+  // Submit
+  submitBtn.addEventListener('click', async () => {
+    if (!selectedFile || !gameNameInput.value.trim() || !systemSelect.value) return
+
+    const { user } = store.getState()
+    if (!user) {
+      showToast('Please sign in first', 'error')
+      return
+    }
+
+    submitBtn.disabled = true
+    submitBtn.innerHTML = `
+      <svg class="spinner" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21 12a9 9 0 11-6.219-8.56"/>
+      </svg>
+      Uploading...
+    `
+
+    try {
+      await library.uploadRom(user.id, selectedFile, gameNameInput.value.trim(), systemSelect.value)
+      showToast('ROM uploaded to cloud!', 'success')
+      modal.remove()
+      loadLibrary()
+      loadLibraryStats()
+    } catch (err) {
+      console.error('Upload error:', err)
+      showToast('Upload failed: ' + err.message, 'error')
+      submitBtn.disabled = false
+      submitBtn.innerHTML = `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        Upload to Cloud
+      `
+    }
+  })
+}
+
+async function loadUploadQuota() {
+  const { user } = store.getState()
+  if (!user) return
+
+  try {
+    const { used, total } = await library.getStorageUsed(user.id)
+    const usedMB = (used / (1024 * 1024)).toFixed(1)
+    const totalGB = (total / (1024 * 1024 * 1024)).toFixed(1)
+    const percent = Math.min(100, (used / total) * 100)
+
+    const quotaUsed = document.getElementById('upload-quota-used')
+    const quotaText = document.getElementById('upload-quota-text')
+
+    if (quotaUsed) quotaUsed.style.width = `${percent}%`
+    if (quotaText) quotaText.textContent = `${usedMB} MB / ${totalGB} GB used`
+  } catch (err) {
+    console.error('Quota load error:', err)
+  }
+}
+
+function formatFileSize(bytes) {
+  if (bytes < 1024) return bytes + ' B'
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
+  if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
+  return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB'
 }
 
 export { closeLibraryManager }
