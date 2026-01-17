@@ -353,10 +353,10 @@ function setupEventListeners() {
     const { user } = store.getState()
 
     if (user) {
-      // Save to Supabase cloud
+      // Save to Supabase cloud using save state (full snapshot)
       try {
         showLoading('Saving to cloud...')
-        const saveData = window.EJS_emulator.gameManager.getSaveFile()
+        const saveData = window.EJS_emulator.gameManager.getState()
         if (saveData) {
           const blob = new Blob([saveData], { type: 'application/octet-stream' })
           await saves.save(user.id, currentGame.gameId, blob)
@@ -391,18 +391,15 @@ function setupEventListeners() {
     const { user } = store.getState()
 
     if (user) {
-      // Try to load from Supabase cloud
+      // Try to load from Supabase cloud (save state format)
       try {
         showLoading('Loading from cloud...')
         const saveBlob = await saves.load(user.id, currentGame.gameId)
         if (saveBlob) {
           const arrayBuffer = await saveBlob.arrayBuffer()
           const saveData = new Uint8Array(arrayBuffer)
-          window.EJS_emulator.gameManager.loadSaveFiles()
-          // Load the cloud save data into the emulator
-          if (window.EJS_emulator.gameManager.saveSaveFiles) {
-            window.EJS_emulator.gameManager.loadState(saveData)
-          }
+          // Load the save state into the emulator
+          window.EJS_emulator.gameManager.loadState(saveData)
           showToast('Loaded from cloud!', 'success')
         } else {
           // No cloud save, try local
@@ -1030,7 +1027,7 @@ function showCloudSaveMenu(hasCloudSave) {
     const { user } = store.getState()
     try {
       showLoading('Uploading to cloud...')
-      const saveData = window.EJS_emulator.gameManager.getSaveFile()
+      const saveData = window.EJS_emulator.gameManager.getState()
       if (saveData) {
         const blob = new Blob([saveData], { type: 'application/octet-stream' })
         await saves.save(user.id, currentGame.gameId, blob)
